@@ -43,25 +43,20 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
     };
   };
   
-export const handleOrderEdit = async (orderEditPayload) => {
-  try {
-    const { order_id, line_items } = orderEditPayload.order_edit;
+  export const handleOrderEdit = async (orderEditPayload) => {
+    try {
+      const { order_id, line_items } = orderEditPayload.order_edit;
   
-    // 1. Find existing order
-    const order = await Order.findOne({ order_id });
+      // 1. Find existing order
+      const order = await Order.findOne({ order_id });
   
-    if (!order) {
-      console.error(`Order with ID ${order_id} not found.`);
-      return;
-    }
+      if (!order) {
+        console.error(`Order with ID ${order_id} not found.`);
+        return;
+      }
   
-    // 2. Handle line item additions
-    for (const item of line_items.additions) {
-      const shopifyLineItemId = item.id;
-      const delta = item.delta || 1;
-  
-      // Option A: fetch full line item data from Shopify
-      const shopifyResp = await axios.get(
+      // 2. Fetch full order data
+      const shopifyOrderResp = await axios.get(
         `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order_id}.json`,
         {
           headers: {
@@ -69,42 +64,71 @@ export const handleOrderEdit = async (orderEditPayload) => {
           }
         }
       );
+      const shopifyOrder = shopifyOrderResp.data.order;
   
-      const shopifyOrder = shopifyResp.data.order;
-      const newLineItem = shopifyOrder.line_items.find(li => li.id === shopifyLineItemId);
-  
-      if (newLineItem) {
-        // Add line item to local order
-        order.line_items.push({
-          name: newLineItem.name,
-          price: parseFloat(newLineItem.price),
-          quantity: delta,
-          sku: newLineItem.sku,
-          product_id: newLineItem.product_id?.toString(),
-          variant_id: newLineItem.variant_id?.toString(),
-          title: newLineItem.title,
-          total_discount: 0,
-          fulfillment_item_id: newLineItem.id.toString(),
-          vendor_name: newLineItem.vendor,
-          vendor_id: "68942697132fc9edcecbc190"
-        });
-      }
-    }
-  
-    // 3. Handle line item removals (if any)
-    for (const item of line_items.removals) {
-      const shopifyLineItemId = item.id;
-  
-      order.line_items = order.line_items.filter(
-        li => li.fulfillment_item_id !== shopifyLineItemId.toString()
+      // 3. Fetch fulfillment orders to get fulfillment item IDs
+      const fulfillmentResp = await axios.get(
+        `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order_id}/fulfillment_orders.json`,
+        {
+          headers: {
+            'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        }
       );
-    }
   
-    // 4. Save the updated order
-   const data = await order.save();
-   return data;
-  } catch (error) {
-    console.log(error);
-  }
-};
-      
+      const fulfillmentOrders = fulfillmentResp.data.fulfillment_orders || [];
+  
+      // Create a map: Shopify line_item_id → fulfillment_item_id
+      const fulfillmentMap = {};
+      fulfillmentOrders.forEach(fOrder => {
+        fOrder.line_items.forEach(fItem => {
+          fulfillmentMap[fItem.line_item_id] = fItem.id;
+        });
+      });
+  
+      // 4. Handle line item additions
+      for (const item of line_items.additions) {
+        const shopifyLineItemId = item.id;
+        const delta = item.delta || 1;
+  
+        const newLineItem = shopifyOrder.line_items.find(li => li.id === shopifyLineItemId);
+  
+        if (newLineItem) {
+          const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
+  
+          order.line_items.push({
+            name: newLineItem.name,
+            price: parseFloat(newLineItem.price),
+            quantity: delta,
+            sku: newLineItem.sku,
+            product_id: newLineItem.product_id?.toString(),
+            variant_id: newLineItem.variant_id?.toString(),
+            title: newLineItem.title,
+            total_discount: 0,
+            fulfillment_item_id: fulfillment_item_id?.toString() || null,
+            vendor_name: newLineItem.vendor,
+            vendor_id: "68942697132fc9edcecbc190" // replace with dynamic logic if needed
+          });
+        }
+      }
+  
+      // 5. Handle line item removals
+      for (const item of line_items.removals) {
+        const shopifyLineItemId = item.id;
+  
+        // Use fulfillment_item_id (not internal Mongo id)
+        order.line_items = order.line_items.filter(
+          li => li.id !== shopifyLineItemId.toString()
+        );
+      }
+  
+      // 6. Save the updated order
+      const data = await order.save();
+      return data;
+  
+    } catch (error) {
+      console.error('Error handling order edit:', error?.response?.data || error.message);
+    }
+  };
+ 

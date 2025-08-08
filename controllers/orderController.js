@@ -78,7 +78,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       },
 
       "line_items": order?.line_items?.map(item => (
-         {
+         {  
+            "id":item?.id,
             "name": item?.name || null,
             "price": item?.price || null,
             "product_id": item?.product_id || null,
