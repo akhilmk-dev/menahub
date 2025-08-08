@@ -114,7 +114,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
     });
    data.fulfillment_id = response?.data?.fulfillment_orders[0]?.id
    const finalData = data.line_items?.map(item=>({...item,fulfillment_item_id:item?.id}))
-   const newOrder = new Order(finalData);
+   console.log({...data,line_items:finalData});
+   const newOrder = new Order({...data,line_items:finalData});
    await newOrder.save();
    res.status(200).json({message:"new order created"})
 
