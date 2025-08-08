@@ -1,5 +1,5 @@
 
-const { getVendorLineItems } = require('../helper/orderHelper');
+const { getVendorLineItems, handleOrderEdit } = require('../helper/orderHelper');
 const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const axios = require('axios');
@@ -122,8 +122,11 @@ exports.getOrderByVendor = catchAsync(async(req,res,next)=>{
 
 //update order
 exports.updateOrder = catchAsync(async(req,res,next)=>{
-  console.log(req.body.order_edit.line_items?.additions,"additions")
-  console.log(req.body.order_edit.line_items?.removals,"removals")
+   const orderEditPayload = req.body;
+
+   const response =  await handleOrderEdit(orderEditPayload);
+
+    res.status(200).json({status:"success",message:"Order updated successfully",data:response?.data});
 })
 
 
