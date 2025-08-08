@@ -1,12 +1,33 @@
 
+const { getVendorLineItems } = require('../helper/orderHelper');
 const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const axios = require('axios');
 
+// get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
-   console.log(req.body)
-});
+   const page = parseInt(req.query.page) || 1;
+   const limit = parseInt(req.query.limit) || 20;
+   const skip = (page - 1) * limit;
+ 
+   const orders = await Order.find()
+     .sort({ createdAt: -1 })
+     .skip(skip)
+     .limit(limit);
+ 
+   const total = await Order.countDocuments();
+ 
+   res.status(200).json({
+     status: 'success',
+     page,
+     limit,
+     total,
+     totalPages: Math.ceil(total / limit),
+     data: orders,
+   });
+ }); 
 
+ //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
    const data = {
@@ -89,39 +110,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
 });
 
+//get all orders by id
 exports.getOrderByVendor = catchAsync(async(req,res,next)=>{
-   const orders = await Order.find({ "line_items.vendor_id": req.params.id }).lean();
-   console.log(orders)
-  // Step 2: Filter line items per order to keep only those for this vendor
-  const vendorOrders = orders.map(order => {
-    const filteredLineItems = order.line_items.filter(item =>
-      item?.vendor_id?.toString() === req.params.id.toString()
-    );
+   const vendorId = req.params.id
+   const page = parseInt(req.query.page) || 1;
+   const limit = parseInt(req.query.limit) || 10;
 
-    return {
-      _id: order._id,
-      order_id: order.order_id,
-      fulfillment_id: order.fulfillment_id,
-      cancel_reason: order.cancel_reason,
-      cancel_at: order.cancel_at,
-      contact_email: order.contact_email,
-      created_at: order.created_at,
-      email: order.email,
-      name: order.name,
-      order_number: order.order_number,
-      payment_gate_way: order.payment_gate_way,
-      phone: order.phone,
-      total_discounts: order.total_discounts,
-      total_price: order.total_price,
-      total_tax: order.total_tax,
-      shipping_address: order.shipping_address,
-      customer: order.customer,
-      line_items: filteredLineItems,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt,
-    };
-   })
-   res.status(200).json({status:"success",message:"orders fetched successfully",data:vendorOrders})
+   const result = await getVendorLineItems(vendorId, page, limit);
+   res.status(200).json({status:"success",message:"orders fetched successfully",data:result})
 });
+
+//update order
+exports.updateOrder = catchAsync(async(req,res,next)=>{
+  console.log(req.body,"now")
+})
 
 
