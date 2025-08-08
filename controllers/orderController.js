@@ -68,39 +68,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             "variant_id": item?.variant_id,
             "vendor_name": item?.vendor,
             "fulfillment_item_id": "",
-            "vendor_id": "68942697132fc9edcecbc190",
-            "shipping_address": {
-               "first_name": order?.shipping_address?.first_name || null,
-               "last_name": order?.shipping_address?.last_name || null,
-               "address1": order?.shipping_address?.address1 || null,
-               "address2": order?.shipping_address?.address2 || null,
-               "company": order?.shipping_address?.company || null,
-               "phone": order?.shipping_address?.phone || null,
-               "city": order?.shipping_address?.city || null,
-               "country": order?.shipping_address?.country || null,
-               "country_code": order?.shipping_address?.country_code || null,
-               "latitude": order?.shipping_address?.latitude || null,
-               "longitude": order?.shipping_address?.longitude || null
-            },
-            "customer": {
-               "id": order?.customer?.id || null,
-               "created_at": order?.customer?.created_at || null,
-               "first_name": order?.customer?.first_name || null,
-               "last_name": order?.customer?.last_name || null,
-               "email": order?.customer?.email || null,
-               "currency": order?.customer?.currency || null,
-               "default_address": {
-                  "id": order?.customer?.default_address?.id || null,
-                  "first_name": order?.customer?.default_address?.first_name || null,
-                  "last_name": order?.customer?.default_address?.last_name || null,
-                  "address1": order?.customer?.default_address?.address1 || null,
-                  "address2": null,
-                  "city": order?.customer?.default_address?.city || null,
-                  "country": order?.customer?.default_address?.country || null,
-                  "country_code": order?.customer?.default_address?.country_code || null,
-                  "phone": order?.customer?.default_address?.phone || null
-               }
-            },
+            "vendor_id": "68942697132fc9edcecbc190"
          }
       )
       )
@@ -120,3 +88,40 @@ exports.createOrder = catchAsync(async (req, res, next) => {
    res.status(200).json({message:"new order created"})
 
 });
+
+exports.getOrderByVendor = catchAsync(async(req,res,next)=>{
+   const orders = await Order.find({ "line_items.vendor_id": req.params.id }).lean();
+   console.log(orders)
+  // Step 2: Filter line items per order to keep only those for this vendor
+  const vendorOrders = orders.map(order => {
+    const filteredLineItems = order.line_items.filter(item =>
+      item?.vendor_id?.toString() === req.params.id.toString()
+    );
+
+    return {
+      _id: order._id,
+      order_id: order.order_id,
+      fulfillment_id: order.fulfillment_id,
+      cancel_reason: order.cancel_reason,
+      cancel_at: order.cancel_at,
+      contact_email: order.contact_email,
+      created_at: order.created_at,
+      email: order.email,
+      name: order.name,
+      order_number: order.order_number,
+      payment_gate_way: order.payment_gate_way,
+      phone: order.phone,
+      total_discounts: order.total_discounts,
+      total_price: order.total_price,
+      total_tax: order.total_tax,
+      shipping_address: order.shipping_address,
+      customer: order.customer,
+      line_items: filteredLineItems,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    };
+   })
+   res.status(200).json({status:"success",message:"orders fetched successfully",data:vendorOrders})
+});
+
+

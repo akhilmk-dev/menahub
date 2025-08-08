@@ -11,39 +11,7 @@ const lineItemSchema = new mongoose.Schema({
   variant_id: { type:String },
   vendor_name: { type: String },
   fulfillment_item_id:{type:String},
-  vendor_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
-  shipping_address:{
-    first_name: { type: String },
-    last_name: { type: String },
-    address1: { type: String },
-    address2: { type: String, default: null },
-    company: { type: String, default: null },
-    phone: { type: String },
-    city: { type: String },
-    country: { type: String },
-    country_code: { type: String },
-    latitude: { type: Number, default: null },
-    longitude: { type: Number, default: null },
-  },
-  customer: {
-    id: { type: Number },
-    created_at: { type: Date },
-    first_name: { type: String },
-    last_name: { type: String },
-    email: { type: String },
-    currency: { type: String },
-    default_address: {
-      id: { type: Number },
-      first_name: { type: String },
-      last_name: { type: String },
-      address1: { type: String },
-      address2: { type: String, default: null },
-      city: { type: String },
-      country: { type: String },
-      country_code: { type: String },
-      phone: { type: String }
-    }
-  }
+  vendor_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' }
 }, { _id: true });
 
 const orderSchema = new mongoose.Schema({
