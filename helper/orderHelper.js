@@ -44,6 +44,7 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
   };
   
 export const handleOrderEdit = async (orderEditPayload) => {
+  try {
     const { order_id, line_items } = orderEditPayload.order_edit;
   
     // 1. Find existing order
@@ -102,5 +103,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
     // 4. Save the updated order
    const data = await order.save();
    return data;
+  } catch (error) {
+    console.log(error);
+  }
 };
       
