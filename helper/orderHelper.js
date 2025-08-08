@@ -62,7 +62,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
   
       // Option A: fetch full line item data from Shopify
       const shopifyResp = await axios.get(
-        `https://${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order_id}.json`,
+        `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order_id}.json`,
         {
           headers: {
             'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
