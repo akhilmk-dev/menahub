@@ -123,6 +123,8 @@ exports.getOrderByVendor = catchAsync(async(req,res,next)=>{
 //update order
 exports.updateOrder = catchAsync(async(req,res,next)=>{
   console.log(req.body,"now")
+  console.log(req.body.line_items?.additions,"additions")
+  console.log(req.body.line_items?.removals,"removals")
 })
 
 
