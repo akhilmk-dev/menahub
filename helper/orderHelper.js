@@ -1,6 +1,5 @@
 import Order from "../models/Order.js";
-const axios = require('axios');
-
+import axios from 'axios';
 export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
     const skip = (page - 1) * limit;
   
