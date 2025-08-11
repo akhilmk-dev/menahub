@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const lineItemSchema = new mongoose.Schema({
+  id: {type: String},
   name: { type: String },
   price: { type: Number },
   product_id: {type: String },

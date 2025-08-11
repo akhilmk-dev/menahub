@@ -98,6 +98,7 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
           const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
   
           order.line_items.push({
+            id: newLineItem.id,
             name: newLineItem.name,
             price: parseFloat(newLineItem.price),
             quantity: delta,
@@ -116,7 +117,8 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
-  
+         console.log(item?.id,"shopify id")
+         console.log(order.line_items,"line_items")
         // Use fulfillment_item_id (not internal Mongo id)
         order.line_items = order.line_items.filter(
           li => li.id !== shopifyLineItemId.toString()
