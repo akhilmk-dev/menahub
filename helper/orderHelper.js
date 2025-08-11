@@ -107,7 +107,9 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
             variant_id: newLineItem.variant_id?.toString(),
             title: newLineItem.title,
             total_discount: 0,
+            deleted_date:null,
             fulfillment_item_id: fulfillment_item_id?.toString() || null,
+            fulfillment_status: newLineItem?.fulfillment_statusv||"",
             vendor_name: newLineItem.vendor,
             vendor_id: "68942697132fc9edcecbc190" // replace with dynamic logic if needed
           });
@@ -117,11 +119,15 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
-         console.log(item?.id,"shopify id")
-         console.log(order.line_items,"line_items")
         // Use fulfillment_item_id (not internal Mongo id)
-        order.line_items = order.line_items.filter(
-          li => li.id !== shopifyLineItemId.toString()
+        order.line_items = order.line_items.map(
+          li => {
+            if(li.id !== shopifyLineItemId.toString()){
+              return {...li,deleted_date:new Date().toISOString()}
+            }else{
+              return li
+            }
+          }
         );
       }
   

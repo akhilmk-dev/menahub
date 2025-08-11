@@ -12,6 +12,8 @@ const lineItemSchema = new mongoose.Schema({
   variant_id: { type:String },
   vendor_name: { type: String },
   fulfillment_item_id:{type:String},
+  fulfillment_status: {type:String},
+  deleted_date:{type:String},
   vendor_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' }
 }, { _id: true });
 
@@ -19,7 +21,7 @@ const orderSchema = new mongoose.Schema({
   order_id: { type: String, unique: true },
   fulfillment_id:{type:String},
   cancel_reason: { type: String, default: null },
-  cancel_at: { type: Date, default: null },
+  cancelled_at: { type: Date, default: null },
   contact_email: { type: String },
   created_at: { type: Date, default: Date.now },
   email: { type: String },
@@ -27,6 +29,8 @@ const orderSchema = new mongoose.Schema({
   order_number: { type: String },
   payment_gate_way: { type: String },
   phone: { type: String },
+  financial_status: {type:String},
+  fulfillment_status: {type:String},
   total_discounts: { type: Number, default: 0 },
   total_price: { type: Number },
   total_tax: { type: Number, default: 0 },

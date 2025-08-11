@@ -9,38 +9,40 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const page = parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 20;
    const skip = (page - 1) * limit;
- 
-   const orders = await Order.find()
-     .sort({ createdAt: -1 })
-     .skip(skip)
-     .limit(limit);
- 
-   const total = await Order.countDocuments();
- 
-   res.status(200).json({
-     status: 'success',
-     page,
-     limit,
-     total,
-     totalPages: Math.ceil(total / limit),
-     data: orders,
-   });
- }); 
 
- //create order
+   const orders = await Order.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+   const total = await Order.countDocuments();
+
+   res.status(200).json({
+      status: 'success',
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: orders,
+   });
+});
+
+//create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
    const data = {
       "order_id": order?.id || "",
       "fulfillment_id": "",
       "cancel_reason": null,
-      "cancel_at": null,
+      "cancelled_at": null,
       "created_at": order?.created_at || null,
       "email": order?.email || "",
       "name": order?.name || "",
       "order_number": order?.order_number || "",
       "payment_gate_way": order?.payment_gateway_names[0] || null,
       "phone": order?.phone || "",
+      "financial_status": order?.financial_status || "",
+      "fulfillment_status": order?.fulfillment_status || "",
       "total_discounts": order?.total_discounts || null,
       "total_price": order?.total_price || null,
       "total_tax": order?.total_tax || null,
@@ -78,8 +80,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       },
 
       "line_items": order?.line_items?.map(item => (
-         {  
-            "id":item?.id,
+         {
+            "id": item?.id,
             "name": item?.name || null,
             "price": item?.price || null,
             "product_id": item?.product_id || null,
@@ -89,45 +91,58 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             "quantity": item?.quantity || "",
             "variant_id": item?.variant_id,
             "vendor_name": item?.vendor,
+            "deleted_date":null,
+            "fulfillment_status":item?.fulfillment_status || "",
             "fulfillment_item_id": "",
             "vendor_id": "68942697132fc9edcecbc190"
          }
       )
       )
    }
-  
-   const response = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${data?.order_id}/fulfillment_orders.json`,{
+
+   const response = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${data?.order_id}/fulfillment_orders.json`, {
       headers: {
-        'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
-        'Content-Type': 'application/json',
+         'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
+         'Content-Type': 'application/json',
       }
-    });
+   });
+   
    data.fulfillment_id = response?.data?.fulfillment_orders[0]?.id
-   const finalData = data.line_items?.map(item=>({...item,fulfillment_item_id:item?.id}))
-   console.log({...data,line_items:finalData});
-   const newOrder = new Order({...data,line_items:finalData});
+   const finalData = data.line_items?.map(item => ({ ...item, fulfillment_item_id: item?.id }))
+   const newOrder = new Order({ ...data, line_items: finalData });
    await newOrder.save();
-   res.status(200).json({message:"new order created"})
+   res.status(200).json({ message: "new order created" })
 
 });
 
 //get all orders by id
-exports.getOrderByVendor = catchAsync(async(req,res,next)=>{
+exports.getOrderByVendor = catchAsync(async (req, res, next) => {
    const vendorId = req.params.id
    const page = parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 10;
 
    const result = await getVendorLineItems(vendorId, page, limit);
-   res.status(200).json({status:"success",message:"orders fetched successfully",data:result})
+   res.status(200).json({ status: "success", message: "orders fetched successfully", data: result })
 });
 
 //update order
-exports.updateOrder = catchAsync(async(req,res,next)=>{
+exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body;
 
-   const response =  await handleOrderEdit(orderEditPayload);
+   const response = await handleOrderEdit(orderEditPayload);
 
-    res.status(200).json({status:"success",message:"Order updated successfully",data:response?.data});
+   res.status(200).json({ status: "success", message: "Order updated successfully", data: response?.data });
+});
+
+//Cancell order
+exports.cancelOrder = catchAsync(async(req,res,next)=>{
+     const orderCancelPayload = req.body;
+     const order = await Order.findOne({ order_id: orderCancelPayload.id });
+     order.cancelled_at = orderCancelPayload?.cancelled_at;
+     order.cancel_reason = orderCancelPayload?.cancel_reason;
+     order.financial_status = orderCancelPayload?.financial_status;
+     const data= await order.save();
+     res.status(200).json({ status: "success", message: "Order Cancelled successfully", data: data });
 })
 
 
