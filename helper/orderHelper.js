@@ -122,7 +122,7 @@ export const getVendorLineItems = async (vendorId, page = 1, limit = 10) => {
         // Use fulfillment_item_id (not internal Mongo id)
         order.line_items = order.line_items.map(
           li => {
-            if(li.id !== shopifyLineItemId.toString()){
+            if(li.id == shopifyLineItemId.toString()){
               return {...li,deleted_date:new Date().toISOString()}
             }else{
               return li
