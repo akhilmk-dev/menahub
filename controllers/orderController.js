@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const axios = require('axios');
 const { NotFoundError } = require('../utils/customErrors');
+const RemovedLineItem = require('../models/RemovedLineItem');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
@@ -178,10 +179,25 @@ exports.cancelOrder = catchAsync(async(req,res,next)=>{
 })
 
 // get full order details
-exports.getOrderById = catchAsync(async(req,res,next)=>{
-   const data = await Order.findById(req.params.id);
-   if(!data){
-      return NotFoundError("Order not found")
+exports.getOrderById = catchAsync(async (req, res, next) => {
+   const orderId = req.params.id;
+ 
+   // Fetch order by MongoDB _id
+   const order = await Order.findById(orderId).lean();
+ 
+   if (!order) {
+     return next(new NotFoundError("Order not found"));
    }
-   return res.status(200).json({status:"success",messgae:"Product details fetched successfully",data:data})
-})
+ 
+   // Fetch removed line items by order_id (use Shopify order_id or Mongo _id — adjust if needed)
+   const removedItems = await RemovedLineItem.find({ order_id: order.order_id }).lean();
+ 
+   return res.status(200).json({
+     status: "success",
+     message: "Order details fetched successfully",
+     data: {
+       ...order,
+       removed_line_items: removedItems
+     }
+   });
+});

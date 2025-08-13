@@ -1,5 +1,6 @@
 import Order from "../models/Order.js";
 import axios from 'axios';
+import RemovedLineItem from "../models/RemovedLineItem.js";
 export const getVendorOrders = async (vendorId, page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
 
@@ -137,21 +138,68 @@ export const handleOrderEdit = async (orderEditPayload) => {
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
-        // Use fulfillment_item_id (not internal Mongo id)
-        order.line_items = order.line_items.map(
-          li => {
-            console.log(li?.quantity,"removalss",item?.delta)
-            if(li.id?.toString() == shopifyLineItemId?.toString()){
-              if(li?.quantity - item?.delta <= 0){
-                return {...li,deleted_date:new Date()?.toISOString()}
-              }else{
-                return {...li,quantity:li?.quantity - item?.delta}
+        order.line_items = await Promise.all(
+          order.line_items.map(async (li) => {
+            if (li.id?.toString() === shopifyLineItemId?.toString()) {
+              const newQty = li.quantity - item.delta;
+      
+              const existingRemoved = await RemovedLineItem.findOne({
+                order_id,
+                line_item_id: li.id
+              });
+      
+              if (newQty <= 0) {
+                if (existingRemoved) {
+                  existingRemoved.quantity += li.quantity;
+                  await existingRemoved.save();
+                } else {
+                  await RemovedLineItem.create({
+                    order_id: order_id,
+                    line_item_id: li.id,
+                    name: li.name,
+                    price: li.price,
+                    quantity: li.quantity,
+                    sku: li.sku,
+                    product_id: li.product_id,
+                    variant_id: li.variant_id,
+                    title: li.title,
+                    vendor_id: li.vendor_id,
+                    vendor_name: li.vendor_name
+                  });
+                }
+                return null; 
+              } else {
+                if (existingRemoved) {
+                  existingRemoved.quantity += item.delta;
+                  await existingRemoved.save();
+                } else {
+                  await RemovedLineItem.create({
+                    order_id: order_id,
+                    line_item_id: li.id,
+                    name: li.name,
+                    price: li.price,
+                    quantity: item.delta,
+                    sku: li.sku,
+                    product_id: li.product_id,
+                    variant_id: li.variant_id,
+                    title: li.title,
+                    vendor_id: li.vendor_id,
+                    vendor_name: li.vendor_name
+                  });
+                }
+      
+                return {
+                  ...li,
+                  quantity: newQty
+                };
               }
-            }else{
-              return li;
             }
-          }
+      
+            return li;
+          })
         );
+      
+        order.line_items = order.line_items.filter(Boolean);
       }
   
       const data = await order.save();
