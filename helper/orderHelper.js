@@ -112,9 +112,10 @@ export const handleOrderEdit = async (orderEditPayload) => {
         
           if (index !== -1) {
             const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-             console.log(line_items[index]?.id,"index",shopifyLineItemId)
+             console.log(order?.line_items[index]?.id,"index",shopifyLineItemId)
             order.line_items[index] = {
               ...order.line_items[index], 
+              id: item?.id,
               name: newLineItem.name,
               price: parseFloat(newLineItem.price),
               quantity: Number(existsInDB?.quantity) + Number(delta),
