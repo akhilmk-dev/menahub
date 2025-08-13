@@ -112,7 +112,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         
           if (index !== -1) {
             const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-             console.log(Number(existsInDB?.quantity) + Number(delta),existsInDB?.quantity,"helloooooooo")
+             console.log(line_items[index]?.id,"index",shopifyLineItemId)
             order.line_items[index] = {
               ...order.line_items[index], 
               name: newLineItem.name,
@@ -123,6 +123,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
               variant_id: newLineItem.variant_id?.toString(),
               title: newLineItem.title,
               fulfillment_item_id: fulfillment_item_id?.toString() || null,
+              deleted_date: existsInDB?.deleted_date || null,
               fulfillment_status: newLineItem?.fulfillment_status || "",
               vendor_name: newLineItem.vendor,
               vendor_id: "68942697132fc9edcecbc190"
@@ -130,7 +131,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
           }
         }
       }
-  
+      {console.log(line_items?.removals,"line_items")}
+      {console.log(line_items?.additions,"line_items_adding")}
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
