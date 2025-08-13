@@ -4,11 +4,11 @@ const { authenticate } = require('../middleware/authMiddleware');
 const router = express.Router();
 
 router.get('/',authenticate,getOrders);
-router.post('/',authenticate,createOrder);
+router.post('/',createOrder);
 router.get(`/:id`,authenticate,getOrderByVendor);
 // full order details
 router.get('/all/:id',authenticate,getOrderById);
-router.post('/update',authenticate,updateOrder);
-router.post('/cancel',authenticate,cancelOrder)
+router.post('/update',updateOrder);
+router.post('/cancel',cancelOrder)
 
 module.exports = router;
