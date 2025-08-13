@@ -83,14 +83,14 @@ export const handleOrderEdit = async (orderEditPayload) => {
         const shopifyLineItemId = item.id;
         const delta = item.delta || 1;
   
-        const newLineItem = shopifyOrder.line_items.find(li => li.id === shopifyLineItemId);
+        const newLineItem = shopifyOrder.line_items.find(li => li.id == shopifyLineItemId);
         const existsInDB = order.line_items?.find(li=>li.id == shopifyLineItemId);
   
         if (newLineItem && !existsInDB) {
           const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-  
+
           order.line_items.push({
-            id: newLineItem.id,
+            id: item.id,
             name: newLineItem.name,
             price: parseFloat(newLineItem.price),
             quantity: delta,
