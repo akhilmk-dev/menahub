@@ -114,10 +114,10 @@ export const handleOrderEdit = async (orderEditPayload) => {
             const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
         
             order.line_items[index] = {
-              ...order.line_items[index], // keep other existing fields
+              ...order.line_items[index], 
               name: newLineItem.name,
               price: parseFloat(newLineItem.price),
-              quantity: Number(newLineItem?.quantity) + Number(delta),
+              quantity: Number(existsInDB?.quantity) + Number(delta),
               sku: newLineItem.sku,
               product_id: newLineItem.product_id?.toString(),
               variant_id: newLineItem.variant_id?.toString(),
@@ -137,20 +137,19 @@ export const handleOrderEdit = async (orderEditPayload) => {
         // Use fulfillment_item_id (not internal Mongo id)
         order.line_items = order.line_items.map(
           li => {
-            if(li.id == shopifyLineItemId.toString()){
-              if(li?.quantity - item?.delta <=0){
+            if(li.id.toString() == shopifyLineItemId.toString()){
+              if(li?.quantity - item?.delta <= 0){
                 return {...li,deleted_date:new Date().toISOString()}
               }else{
                 return {...li,quantity:li?.quantity - item?.delta}
               }
             }else{
-              return li
+              return li;
             }
           }
         );
       }
   
-      // 6. Save the updated order
       const data = await order.save();
       return data;
   
