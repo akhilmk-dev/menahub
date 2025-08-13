@@ -107,7 +107,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
           });
         }else{
           const index = order.line_items.findIndex(
-            li => li.id.toString() === shopifyLineItemId.toString()
+            li => li.id?.toString() === shopifyLineItemId?.toString()
           );
         
           if (index !== -1) {
@@ -138,9 +138,9 @@ export const handleOrderEdit = async (orderEditPayload) => {
         order.line_items = order.line_items.map(
           li => {
             console.log(li?.quantity,"removalss",item?.delta)
-            if(li.id.toString() == shopifyLineItemId.toString()){
+            if(li.id?.toString() == shopifyLineItemId?.toString()){
               if(li?.quantity - item?.delta <= 0){
-                return {...li,deleted_date:new Date().toISOString()}
+                return {...li,deleted_date:new Date()?.toISOString()}
               }else{
                 return {...li,quantity:li?.quantity - item?.delta}
               }
