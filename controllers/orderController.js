@@ -1,8 +1,9 @@
 
-const { getVendorLineItems, handleOrderEdit } = require('../helper/orderHelper');
+const { handleOrderEdit, getVendorOrders } = require('../helper/orderHelper');
 const Order = require('../models/Order');
 const catchAsync = require('../utils/catchAsync');
 const axios = require('axios');
+const { NotFoundError } = require('../utils/customErrors');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
@@ -10,12 +11,36 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const limit = parseInt(req.query.limit) || 20;
    const skip = (page - 1) * limit;
 
-   const orders = await Order.find()
-      .sort({ createdAt: -1 })
+   let sort = { createdAt: -1 }; 
+   if (req.query.sortBy) {
+      sort = {};
+      const sortParams = req.query.sortBy.split(',');
+      sortParams.forEach(param => {
+         const [field, order] = param.split(':');
+         sort[field] = order === 'asc' ? 1 : -1;
+      });
+   }
+
+   const search = req.query.search;
+   let filter = {};
+
+   if (search) {
+      const regex = new RegExp(search, 'i'); 
+      filter = {
+         $or: [
+            { order_number: regex },
+            { 'customer.firstname': regex },
+            { 'customer.lastname': regex }
+         ]
+      };
+   }
+
+   const orders = await Order.find(filter)
+      .sort(sort)
       .skip(skip)
       .limit(limit);
 
-   const total = await Order.countDocuments();
+   const total = await Order.countDocuments(filter);
 
    res.status(200).json({
       status: 'success',
@@ -26,6 +51,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       data: orders,
    });
 });
+
 
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
@@ -46,6 +72,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       "total_discounts": order?.total_discounts || null,
       "total_price": order?.total_price || null,
       "total_tax": order?.total_tax || null,
+      "subtotal_price":order?.subtotal_price || null,
       "shipping_address": {
          "first_name": order?.shipping_address?.first_name || null,
          "last_name": order?.shipping_address?.last_name || null,
@@ -121,7 +148,7 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
    const page = parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 10;
 
-   const result = await getVendorLineItems(vendorId, page, limit);
+   const result = await getVendorOrders(vendorId, page, limit);
    res.status(200).json({ status: "success", message: "orders fetched successfully", data: result })
 });
 
@@ -141,8 +168,20 @@ exports.cancelOrder = catchAsync(async(req,res,next)=>{
      order.cancelled_at = orderCancelPayload?.cancelled_at;
      order.cancel_reason = orderCancelPayload?.cancel_reason;
      order.financial_status = orderCancelPayload?.financial_status;
+     const now = new Date();
+     order.line_items = order.line_items.map(item => ({
+       ...item,
+       deleted_date: now
+     }));
      const data= await order.save();
      res.status(200).json({ status: "success", message: "Order Cancelled successfully", data: data });
 })
 
-
+// get full order details
+exports.getOrderById = catchAsync(async(req,res,next)=>{
+   const data = await Order.findById(req.params.id);
+   if(!data){
+      return NotFoundError("Order not found")
+   }
+   return res.status(200).json({status:"success",messgae:"Product details fetched successfully",data:data})
+})

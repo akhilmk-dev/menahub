@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: [true, "email is required"], unique: true },
   password: { type: String, required: [true, "password is required"] },
   mobile: { type: String, required: [true, "mobile number is required"] },
+  whatsapp_number: {type: String, required:[true,"whatsapp number is required"]},
   role: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
@@ -44,7 +45,6 @@ userSchema.pre('validate', async function (next) {
       'account_number',
       'iban'
     ];
-
     for (const field of requiredFields) {
       if (!user[field]) {
         user.invalidate(field, `${field.replace(/_/g, ' ')} is required`);

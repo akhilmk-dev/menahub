@@ -1,9 +1,9 @@
 const { z } = require('zod');
 
 function validateMiddleware(schema) {
+
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
-
     if (result.success) {
       req.body = result.data;
       return next();

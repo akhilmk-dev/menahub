@@ -34,6 +34,7 @@ const orderSchema = new mongoose.Schema({
   total_discounts: { type: Number, default: 0 },
   total_price: { type: Number },
   total_tax: { type: Number, default: 0 },
+  subtotal_price: {type:Number,default:0},
   shipping_address:{type: String},
   customer: {type:String},
   shipping_address:{
