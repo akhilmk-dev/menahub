@@ -112,7 +112,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         
           if (index !== -1) {
             const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-        
+             conole.log(Number(existsInDB?.quantity) + Number(delta),existsInDB?.quantity,"helloooooooo")
             order.line_items[index] = {
               ...order.line_items[index], 
               name: newLineItem.name,
@@ -137,6 +137,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         // Use fulfillment_item_id (not internal Mongo id)
         order.line_items = order.line_items.map(
           li => {
+            console.log(li?.quantity,"removalss",item?.delta)
             if(li.id.toString() == shopifyLineItemId.toString()){
               if(li?.quantity - item?.delta <= 0){
                 return {...li,deleted_date:new Date().toISOString()}
