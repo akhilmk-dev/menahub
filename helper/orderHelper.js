@@ -38,7 +38,7 @@ export const getVendorOrders = async (vendorId, page = 1, limit = 10) => {
   
 export const handleOrderEdit = async (orderEditPayload) => {
     try {
-      const { order_id, line_items } = orderEditPayload.order_edit;
+      const { order_id, line_items } = orderEditPayload;
       // 1. Find existing order
       const order = await Order.findOne({ order_id });
   
