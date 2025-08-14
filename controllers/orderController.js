@@ -9,9 +9,9 @@ const OrderTimeline = require('../models/OrderTimeline');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
-   const page = parseInt(req.query.page) || 1;
+   const page = parseInt(req.query.page) || 0;
    const limit = parseInt(req.query.limit) || 20;
-   const skip = (page - 1) * limit;
+   const skip = (page) * limit;
 
    let sort = { createdAt: -1 }; 
    if (req.query.sortBy) {
@@ -162,7 +162,6 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
 //update order
 exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body;
-   if(existingOrder)return;
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
       order_id: orderEditPayload.order_id,
