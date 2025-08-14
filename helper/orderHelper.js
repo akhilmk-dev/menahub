@@ -133,8 +133,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
           }
         }
       }
-      // {console.log(line_items?.removals,"line_items")}
-      // {console.log(line_items?.additions,"line_items_adding")}
+
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
@@ -194,14 +193,12 @@ export const handleOrderEdit = async (orderEditPayload) => {
                 };
               }
             }
-      
             return li;
           })
         );
       
         order.line_items = order.line_items.filter(Boolean);
       }
-      order.updated_at = orderEditPayload?.committed_at;
       const data = await order.save();
       return data;
     } catch (error) {

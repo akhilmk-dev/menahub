@@ -168,7 +168,6 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
    await OrderTimeline.create({
       order_id: orderEditPayload.order_id,
       action: 'updated',
-      changes: { before: previousOrder, after: orderEditPayload },
       message: 'Order updated'
     });
    res.status(200).json({ status: "success", message: "Order updated successfully" });
