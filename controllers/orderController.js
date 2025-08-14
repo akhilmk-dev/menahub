@@ -171,7 +171,7 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
       changes: { before: previousOrder, after: orderEditPayload },
       message: 'Order updated'
     });
-   res.status(200).json({ status: "success", message: "Order updated successfully", data: response?.data });
+   res.status(200).json({ status: "success", message: "Order updated successfully" });
 });
 
 //Cancell order

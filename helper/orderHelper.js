@@ -56,7 +56,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
           }
         }
       );
-      const shopifyOrder = shopifyOrderResp.data.order;
+      const shopifyOrder = shopifyOrderResp?.data?.order;
   
       // 3. Fetch fulfillment orders to get fulfillment item IDs
       const fulfillmentResp = await axios.get(
@@ -206,6 +206,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
       return data;
     } catch (error) {
       console.log('Error handling order edit:', error);
+      throw error; 
     }
   };
  
