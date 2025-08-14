@@ -5,6 +5,7 @@ const catchAsync = require('../utils/catchAsync');
 const axios = require('axios');
 const { NotFoundError } = require('../utils/customErrors');
 const RemovedLineItem = require('../models/RemovedLineItem');
+const OrderTimeline = require('../models/OrderTimeline');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
@@ -52,7 +53,6 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       data: orders,
    });
 });
-
 
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
@@ -139,6 +139,12 @@ exports.createOrder = catchAsync(async (req, res, next) => {
    const finalData = data.line_items?.map(item => ({ ...item, fulfillment_item_id: item?.id }))
    const newOrder = new Order({ ...data, line_items: finalData });
    await newOrder.save();
+   await OrderTimeline.create({
+      order_id: data.order_id,
+      action: 'created',
+      changes: data,
+      message: 'Order created'
+    });
    res.status(200).json({ message: "new order created" })
 
 });
@@ -158,7 +164,12 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body;
 
    const response = await handleOrderEdit(orderEditPayload);
-
+   await OrderTimeline.create({
+      order_id: orderEditPayload.order_id,
+      action: 'updated',
+      changes: { before: previousOrder, after: orderEditPayload },
+      message: 'Order updated'
+    });
    res.status(200).json({ status: "success", message: "Order updated successfully", data: response?.data });
 });
 
@@ -175,21 +186,28 @@ exports.cancelOrder = catchAsync(async(req,res,next)=>{
        deleted_date: now
      }));
      const data= await order.save();
+     await OrderTimeline.create({
+      order_id: orderCancelPayload.order_id,
+      action: 'cancelled',
+      changes: {
+        cancelled_at: orderCancelPayload?.cancelled_at,
+        cancel_reason: orderCancelPayload?.cancel_reason,
+        financial_status: orderCancelPayload?.financial_status,
+        deleted_items: order.line_items
+      },
+      message: 'Order cancelled'
+    });
      res.status(200).json({ status: "success", message: "Order Cancelled successfully", data: data });
 })
 
-// get full order details
 exports.getOrderById = catchAsync(async (req, res, next) => {
    const orderId = req.params.id;
- 
-   // Fetch order by MongoDB _id
-   const order = await Order.findById(orderId).lean();
+    const order = await Order.findById(orderId).lean();
  
    if (!order) {
      return next(new NotFoundError("Order not found"));
    }
  
-   // Fetch removed line items by order_id (use Shopify order_id or Mongo _id — adjust if needed)
    const removedItems = await RemovedLineItem.find({ order_id: order.order_id }).lean();
  
    return res.status(200).json({
