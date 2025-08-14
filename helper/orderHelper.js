@@ -39,12 +39,23 @@ export const getVendorOrders = async (vendorId, page = 1, limit = 10) => {
 export const handleOrderEdit = async (orderEditPayload) => {
     try {
       const { order_id, line_items } = orderEditPayload.order_edit;
+      const committedAt = new Date(orderEditPayload.committed_at);
       // 1. Find existing order
       const order = await Order.findOne({ order_id });
   
       if (!order) {
         console.error(`Order with ID ${order_id} not found.`);
         return;
+      }
+
+      const dbUpdatedAt = new Date(existingOrder.updated_at);
+
+      // 🛑 Prevent duplicate: check if committed_at is same as already saved
+      if (dbUpdatedAt.getTime() === committedAt.getTime()) {
+         return res.status(200).json({
+            status: 'ignored',
+            message: 'Duplicate webhook call detected — already processed.',
+         });
       }
   
       // 2. Fetch full order data
