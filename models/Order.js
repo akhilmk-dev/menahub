@@ -24,6 +24,7 @@ const orderSchema = new mongoose.Schema({
   cancelled_at: { type: Date, default: null },
   contact_email: { type: String },
   created_at: { type: Date, default: Date.now },
+  updated_at: {type:Date, default: Date.now},
   email: { type: String },
   name: { type: String },
   order_number: { type: String },
@@ -70,6 +71,6 @@ const orderSchema = new mongoose.Schema({
     }
   },
   line_items: [lineItemSchema],
-}, { timestamps: true });
+});
 
 module.exports = mongoose.model('Order', orderSchema);

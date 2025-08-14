@@ -162,7 +162,8 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
 //update order
 exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body;
-
+   const existingOrder = await Order.findOne({ updated_at: req.body.committed_at })
+   if(existingOrder)return;
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
       order_id: orderEditPayload.order_id,

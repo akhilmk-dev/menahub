@@ -201,7 +201,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
       
         order.line_items = order.line_items.filter(Boolean);
       }
-  
+      order.updated_at = orderEditPayload?.committed_at;
       const data = await order.save();
       return data;
   
