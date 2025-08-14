@@ -113,7 +113,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         
           if (index !== -1) {
             const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-             console.log(order?.line_items[index]?.id,"index",shopifyLineItemId)
+            //  console.log(order?.line_items[index]?.id,"index",shopifyLineItemId)
             order.line_items[index] = {
               ...order.line_items[index], 
               id: item?.id,
@@ -133,8 +133,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
           }
         }
       }
-      {console.log(line_items?.removals,"line_items")}
-      {console.log(line_items?.additions,"line_items_adding")}
+      // {console.log(line_items?.removals,"line_items")}
+      // {console.log(line_items?.additions,"line_items_adding")}
       // 5. Handle line item removals
       for (const item of line_items.removals) {
         const shopifyLineItemId = item.id;
@@ -204,9 +204,8 @@ export const handleOrderEdit = async (orderEditPayload) => {
       order.updated_at = orderEditPayload?.committed_at;
       const data = await order.save();
       return data;
-  
     } catch (error) {
-      console.error('Error handling order edit:', error?.response?.data || error.message);
+      console.log('Error handling order edit:', error);
     }
   };
  

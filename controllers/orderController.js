@@ -127,7 +127,10 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       )
       )
    }
-
+   const orderExists = await Order.findOne({order_id:req.body.id})
+   if(orderExists){
+      return res.status(409).json({status:"failed",message:"Order already exists"});
+   }
    const response = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${data?.order_id}/fulfillment_orders.json`, {
       headers: {
          'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
@@ -146,7 +149,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       message: 'Order created'
     });
    res.status(200).json({ message: "new order created" })
-
 });
 
 //get all orders by id
@@ -201,7 +203,7 @@ exports.cancelOrder = catchAsync(async(req,res,next)=>{
 
 exports.getOrderById = catchAsync(async (req, res, next) => {
    const orderId = req.params.id;
-    const order = await Order.findById(orderId).lean();
+   const order = await Order.findById(orderId).lean();
  
    if (!order) {
      return next(new NotFoundError("Order not found"));
@@ -209,12 +211,17 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
  
    const removedItems = await RemovedLineItem.find({ order_id: order.order_id }).lean();
  
+   // Fetch the timeline entries for this order_id
+   const timeline = await OrderTimeline.find({ order_id: order.order_id }).sort({ createdAt: -1 }).lean();
+ 
    return res.status(200).json({
      status: "success",
      message: "Order details fetched successfully",
      data: {
        ...order,
-       removed_line_items: removedItems
+       removed_line_items: removedItems,
+       timeline,            // <-- add timeline here
      }
    });
-});
+ });
+ 
