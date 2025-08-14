@@ -48,7 +48,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         return;
       }
 
-      const dbUpdatedAt = new Date(existingOrder.updated_at);
+      const dbUpdatedAt = new Date(order?.updated_at);
 
       // 🛑 Prevent duplicate: check if committed_at is same as already saved
       if (dbUpdatedAt.getTime() === committedAt.getTime()) {
