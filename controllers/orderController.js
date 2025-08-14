@@ -6,6 +6,7 @@ const axios = require('axios');
 const { NotFoundError } = require('../utils/customErrors');
 const RemovedLineItem = require('../models/RemovedLineItem');
 const OrderTimeline = require('../models/OrderTimeline');
+const redis = require('../utils/redis');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
@@ -162,6 +163,18 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
 //update order
 exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body;
+   const lockKey = `webhook-lock:${req.body?.order_id}`;
+   const existing = await redis.get(lockKey);
+
+   // If lock exists, skip processing
+   if (existing) {
+      console.log(`Duplicate webhook for order ${req.body?.order_id} ignored`);
+      return res.status(200).json({ status: 'ignored', message: 'Already processed' });
+   }
+
+   //  Set lock for 15 seconds (to ignore duplicates)
+   await redis.set(lockKey, 'true', { EX: 15 });
+
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
       order_id: orderEditPayload.order_id,
