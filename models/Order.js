@@ -30,6 +30,7 @@ const orderSchema = new mongoose.Schema({
   order_number: { type: String },
   payment_gate_way: { type: String },
   phone: { type: String },
+  currency: {type: String},
   financial_status: {type:String},
   fulfillment_status: {type:String},
   total_discounts: { type: Number, default: 0 },

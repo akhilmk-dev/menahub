@@ -34,7 +34,6 @@ export const getVendorOrders = async (vendorId, page = 1, limit = 10) => {
     orders: filteredOrders
   };
 };
-
   
 export const handleOrderEdit = async (orderEditPayload) => {
     try {

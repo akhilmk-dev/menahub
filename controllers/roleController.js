@@ -20,7 +20,7 @@ exports.createRole = catchAsync(async (req, res) => {
 exports.getRoles = catchAsync(async (req, res) => {
   const roles = await Role.find().select('-__v -updatedAt').populate({
     path: 'permissions',
-    select: '-__v -updatedAt' 
+    select: '-__v -updatedAt'
   })
   res.json({ status: 'success', data: roles });
 });
@@ -30,7 +30,7 @@ exports.getRoleById = catchAsync(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw new InternalServerError("Invalid role ID")
   const role = await Role.findById(req.params.id).populate({
     path: 'permissions',
-    select: '-__v -updatedAt' 
+    select: '-__v -updatedAt'
   });
   if (!role) throw new NotFoundError("Role not found")
   res.json({ status: 'success', data: role });
@@ -63,11 +63,12 @@ exports.deleteRole = catchAsync(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(roleId)) {
     throw new InternalServerError('Invalid role ID');
   }
-  if (roleId === ADMIN_ROLE_ID)throw new ForbiddenError("Cannot delete the admin role")
+  const role = await Role.findById(roleId);
+  if (role?.role_name?.toLowerCase() == "admin") throw new ForbiddenError("Cannot delete the admin role")
+  if (role?.role_name?.toLowerCase() == "vendor") throw new ForbiddenError("Cannot delete the vendor role");
   const usersWithRole = await User.findOne({ role: roleId });
-  if (usersWithRole) throw new ConflictError("Cannot delete this role because it is assigned to one or more users")
+  if (usersWithRole) throw new ConflictError("Cannot delete this role because it is assigned to one or more users");
   // Delete the role
-  const role = await Role.findByIdAndDelete(roleId);
   if (!role) throw new NotFoundError('Role not found');
   res.json({
     status: 'success',
