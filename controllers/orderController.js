@@ -67,6 +67,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
+
    const order = req.body;
    const data = {
       "order_id": order?.id || "",
@@ -141,8 +142,19 @@ exports.createOrder = catchAsync(async (req, res, next) => {
    }
    const orderExists = await Order.findOne({ order_id: req.body.id })
    if (orderExists) {
-      return res.status(409).json({ status: "failed", message: "Order already exists" });
+     orderExists.financial_status = order?.financial_status;
+     orderExists.fulfillment_status = order?.fulfillment_status;
+     orderExists.line_items = orderExists?.line_items?.map(item=> ({...item,fulfillment_status:order?.line_items?.filter(lineItem=>item?.id ==lineItem?.id )?.[0]?.fulfillment_status}))
+     orderExists.currency = order?.currency;
+      const data = await orderExists.save();
+      await OrderTimeline.create({
+         order_id: order?.id,
+         action: order?.fulfillment_status?.toLowercase() == "fulfilled" ?'Fulfilled':'MarkAsPaid',
+         message: 'Order Updated'
+      });
+      return res.status(200).json({ status: "success", message: "order payment successfull" })
    }
+
    const response = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${data?.order_id}/fulfillment_orders.json`, {
       headers: {
          'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
@@ -235,23 +247,6 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
       }
    });
 });
-
-exports.markAsPaid = catchAsync(async (req, res, next) => {
-   const orderUpdatePayload = req.body;
-   const order = await Order.findOne({ order_id: orderUpdatePayload?.id });
-   order.financial_status = orderUpdatePayload?.financial_status;
-   order.fulfillment_status = orderUpdatePayload?.fulfillment_status;
-   order.line_items = order?.line_items?.map(item=> ({...item,fulfillment_status:orderUpdatePayload?.line_items?.filter(lineItem=>item?.id ==lineItem?.id )?.[0]?.fulfillment_status}))
-   console.log(order.line_items)
-   order.currency = orderUpdatePayload?.currency;
-   const data = await order.save();
-   await OrderTimeline.create({
-      order_id: orderUpdatePayload?.id,
-      action: orderUpdatePayload?.fulfillment_status?.toLowercase() == "fulfilled" ?'Fulfilled':'MarkAsPaid',
-      message: 'Order Updated'
-   });
-   return res.status(200).json({ status: "success", message: "order payment successfull" })
-})
 
 exports.fulfilOrder = catchAsync(async (req, res, next) => {
    const lineItems = req.body?.line_items?.map(item => ({
