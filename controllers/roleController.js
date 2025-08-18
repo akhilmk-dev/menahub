@@ -3,7 +3,6 @@ const Role = require('../models/Role');
 const catchAsync = require('../utils/catchAsync');
 const { InternalServerError, NotFoundError, ConflictError, ForbiddenError } = require('../utils/customErrors');
 const User = require('../models/User');
-const ADMIN_ROLE_ID = '688b3d3cc2e0184a586e8ff7';
 
 
 // Create role
