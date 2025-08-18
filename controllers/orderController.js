@@ -242,10 +242,11 @@ exports.markAsPaid = catchAsync(async (req, res, next) => {
    order.financial_status = orderUpdatePayload?.financial_status;
    order.fulfillment_status = orderUpdatePayload?.fulfillment_status;
    order.line_items = order?.line_items?.map(item=> ({...item,fulfillment_status:item?.fulfillment_status}))
+   console.log(order.line_items)
    order.currency = orderUpdatePayload?.currency;
    const data = await order.save();
    await OrderTimeline.create({
-      order_id: orderUpdatePayload.order_id,
+      order_id: orderUpdatePayload?.id,
       action: orderUpdatePayload?.fulfillment_status?.toLowercase() == "fulfilled" ?'Fulfilled':'Mark as paid',
       message: 'Order Fulfilled'
    });
