@@ -145,7 +145,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             "fulfillment_status": item?.fulfillment_status || "",
             "fulfillment_item_id": "",
             "vendor_id": item?.vendorId,
-            "vendor":item?.vendor
          }
       )
       )
