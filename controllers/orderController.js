@@ -159,7 +159,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
 
    data.fulfillment_id = response?.data?.fulfillment_orders[0]?.id
-   const finalData = data.line_items?.map(item => ({ ...item, fulfillment_item_id: response?.data?.fulfillment_orders[0]?.line_items?.filter(item=>item?.id == item?.id)?.[0]?.fulfillment_order_id}))
+   const finalData = data.line_items?.map(item => ({ ...item, fulfillment_item_id: response?.data?.fulfillment_orders[0]?.line_items?.filter(Lineitem=>item?.id == Lineitem?.line_item_id)?.[0]?.id}))
    const newOrder = new Order({ ...data, line_items: finalData });
    await newOrder.save();
    await OrderTimeline.create({
