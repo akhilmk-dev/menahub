@@ -13,6 +13,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const limit = parseInt(req.query.limit) || 20;
    const skip = page * limit;
 
+   // Default sort
    let sort = { createdAt: -1 };
    if (req.query.sortBy) {
       sort = {};
@@ -27,7 +28,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 
    let filter = {};
 
-   // Search filter
+   // 🔍 Search filter
    if (search) {
       const regex = new RegExp(search, 'i');
       filter.$or = [
@@ -37,32 +38,46 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       ];
    }
 
-   // Vendor filter (matches any line_item with vendor_id)
+   // 🏷️ Vendor filter (match orders where at least one line_item has this vendor_id)
    if (vendor_id) {
-      filter['line_items.vendor_id'] = vendor_id;
+      filter['line_items'] = {
+         $elemMatch: { vendor_id }
+      };
    }
 
-   // Financial status filter
+   // 💳 Financial status filter
    if (financial_status) {
       filter.financial_status = financial_status;
    }
 
+   // 🧾 Fetch matching orders
    const orders = await Order.find(filter)
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean(); // use lean for performance if you're not modifying Mongoose doc methods
 
    const total = await Order.countDocuments(filter);
 
+   // 🔁 Filter out unrelated line_items if vendor_id is used
+   const filteredOrders = orders.map(order => {
+      if (vendor_id) {
+         order.line_items = order.line_items.filter(item => item.vendor_id === vendor_id);
+      }
+      return order;
+   });
+
+   // 📤 Send response
    res.status(200).json({
       status: 'success',
       page,
       limit,
       total,
       totalPages: Math.ceil(total / limit),
-      data: orders,
+      data: filteredOrders,
    });
 });
+
 
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
