@@ -207,7 +207,7 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
    }));
    const data = await order.save();
    await OrderTimeline.create({
-      order_id: orderCancelPayload.order_id,
+      order_id: orderCancelPayload.id,
       action: 'cancelled',
       changes: {
          cancelled_at: orderCancelPayload?.cancelled_at,
