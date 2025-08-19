@@ -105,6 +105,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
                }
             }
          );
+
+         console.log(metafieldRes,"metafields-ref")
    
          const vendorIdMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendorId");
          const vendorMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendor");
@@ -195,7 +197,7 @@ exports.updateOrder = catchAsync(async (req, res, next) => {
    const orderEditPayload = req.body?.order_edit;
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
-      order_id: orderEditPayload.order_id,
+      order_id: orderEditPayload?.order_id,
       action: 'updated',
       message: 'Order updated'
    });
