@@ -108,7 +108,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
          console.log(metafieldRes?.data?.metafields,"metafields-ref")
    
-         const vendorIdMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendorId");
+         const vendorIdMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendorid");
          const vendorMeta = metafieldRes.data.metafields.find(mf => mf.key === "vendor");
    
          metafieldsPerProduct[item.product_id] = {
