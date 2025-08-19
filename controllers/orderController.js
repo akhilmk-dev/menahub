@@ -69,6 +69,16 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 exports.createOrder = catchAsync(async (req, res, next) => {
 
    const order = req.body;
+   const orderExists = await Order.findOne({ order_id: req.body.id ?? req.body.order_id });
+
+   if (orderExists) { 
+      orderExists.financial_status = order?.financial_status; 
+      orderExists.fulfillment_status = order?.fulfillment_status; 
+      orderExists.line_items = orderExists?.line_items?.map(item=> ({...item,fulfillment_status:order?.line_items?.filter(lineItem=>item?.id ==lineItem?.id )?.[0]?.fulfillment_status}))
+       orderExists.currency = order?.currency;
+      const data = await orderExists.save(); 
+      return res.status(200).json({ status: "success", message: "order payment successfull",data:data }) 
+   }
    const data = {
       "order_id": order?.id || "",
       "fulfillment_id": "",
@@ -140,27 +150,14 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       )
       )
    }
-   const orderExists = await Order.findOne({ order_id: req.body.id })
-   if (orderExists) {
-     orderExists.financial_status = order?.financial_status;
-     orderExists.fulfillment_status = order?.fulfillment_status;
-     orderExists.line_items = orderExists?.line_items?.map(item=> ({...item,fulfillment_status:order?.line_items?.filter(lineItem=>item?.id ==lineItem?.id )?.[0]?.fulfillment_status}))
-     orderExists.currency = order?.currency;
-      const data = await orderExists.save();
-      await OrderTimeline.create({
-         order_id: order?.id,
-         action: order?.fulfillment_status?.toLowercase() == "fulfilled" ?'Fulfilled':'MarkAsPaid',
-         message: 'Order Updated'
-      });
-      return res.status(200).json({ status: "success", message: "order payment successfull" })
-   }
-
    const response = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${data?.order_id}/fulfillment_orders.json`, {
       headers: {
          'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
          'Content-Type': 'application/json',
       }
    });
+
+   console.log(response?.data,"fulfillment id's")
 
    data.fulfillment_id = response?.data?.fulfillment_orders[0]?.id
    const finalData = data.line_items?.map(item => ({ ...item, fulfillment_item_id: item?.id }))
@@ -247,7 +244,7 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
       }
    });
 });
-
+ 
 exports.fulfilOrder = catchAsync(async (req, res, next) => {
    const lineItems = req.body?.line_items?.map(item => ({
       id: `gid://shopify/FulfillmentOrderLineItem/${item?.fulfillment_item_id}`,
@@ -301,9 +298,10 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
             }
          }
       );
-      if(response?.data.data?.fulfillmentCreateV2?.userErrors){
+      if(response?.data.data?.fulfillmentCreateV2?.userErrors ||response?.data?.errors){
          return res.status(500).json({status:"failed",message:'The requested quantity is not available'})
       }
+
       const order = await Order.findOne({ order_id: req.body.order_id });
       order.fulfillment_status = "Fulfilled"
       order.line_items = order.line_items?.map(item => ({ ...item, fulfillment_status: "Fulfilled" }));

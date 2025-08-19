@@ -10,6 +10,7 @@ router.get(`/:id`,authenticate,getOrderByVendor);
 router.get('/all/:id',authenticate,getOrderById);
 router.post('/update',updateOrder);
 router.post('/cancel',cancelOrder);
+router.post('/fulfilled',fulfilOrder)
 
 
 module.exports = router;
