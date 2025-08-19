@@ -64,7 +64,6 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    });
 });
 
-
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
 
@@ -75,7 +74,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       orderExists.financial_status = order?.financial_status; 
       orderExists.fulfillment_status = order?.fulfillment_status; 
       orderExists.line_items = orderExists?.line_items?.map(item=> ({...item,fulfillment_status:order?.line_items?.filter(lineItem=>item?.id ==lineItem?.id )?.[0]?.fulfillment_status}))
-       orderExists.currency = order?.currency;
+      orderExists.currency = order?.currency;
       const data = await orderExists.save(); 
       return res.status(200).json({ status: "success", message: "order payment successfull",data:data }) 
    }
@@ -145,7 +144,8 @@ exports.createOrder = catchAsync(async (req, res, next) => {
             "deleted_date": null,
             "fulfillment_status": item?.fulfillment_status || "",
             "fulfillment_item_id": "",
-            "vendor_id": "68942697132fc9edcecbc190"
+            "vendor_id": item?.vendorId,
+            "vendor":item?.vendor
          }
       )
       )
@@ -176,7 +176,6 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
    const vendorId = req.params.id
    const page = parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 10;
-
    const result = await getVendorOrders(vendorId, page, limit);
    res.status(200).json({ status: "success", message: "orders fetched successfully", data: result })
 });
@@ -245,7 +244,7 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
 });
  
 exports.fulfilOrder = catchAsync(async (req, res, next) => {
-   const lineItems = req.body?.line_items?.map(item => ({
+   const lineItems = req.body?.line_items?.filter(item=> !item?.fulfillment_status)?.map(item => ({
       id: `gid://shopify/FulfillmentOrderLineItem/${item?.fulfillment_item_id}`,
       quantity: item?.quantity
    }));
@@ -297,7 +296,7 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
             }
          }
       );
-      if(response?.data.data?.fulfillmentCreateV2?.userErrors?.length >0  ||response?.data?.errors){
+      if(response?.data.data?.fulfillmentCreateV2?.userErrors?.length >0  || response?.data?.errors){
          return res.status(500).json({status:"failed",message:'The requested quantity is not available'})
       }
 
@@ -324,5 +323,119 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
       });
    }
 });
+
+exports.fulfillSingleItem = catchAsync(async (req, res, next) => {
+   const { fulfillment_id, fulfillment_item_id, quantity, order_id, title } = req.body;
+   
+   if (!fulfillment_id || !fulfillment_item_id || !quantity) {
+     return res.status(400).json({
+       status: 'fail',
+       message: 'Missing required parameters (fulfillment_id, fulfillment_item_id, quantity)'
+     });
+   }
+ 
+   const mutation = `
+     mutation FulfillSingleItem {
+       fulfillmentCreateV2(fulfillment: {
+         notifyCustomer: false,
+         trackingInfo: {
+           company: "My Shipping Company",
+           number: "TRACKING_NUMBER",
+           url: "https://tracking-url.com"
+         },
+         lineItemsByFulfillmentOrder: [
+           {
+             fulfillmentOrderId: "gid://shopify/FulfillmentOrder/${fulfillment_id}",
+             fulfillmentOrderLineItems: [
+               {
+                 id: "gid://shopify/FulfillmentOrderLineItem/${fulfillment_item_id}",
+                 quantity: ${quantity}
+               }
+             ]
+           }
+         ]
+       }) {
+         fulfillment {
+           id
+           status
+           trackingInfo {
+             company
+             number
+             url
+           }
+         }
+         userErrors {
+           field
+           message
+         }
+       }
+     }
+   `;
+ 
+   try {
+     const response = await axios.post(
+       process.env.SHOPIFY_ADMIN_API,
+       { query: mutation },
+       {
+         headers: {
+           'Content-Type': 'application/json',
+           'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+         }
+       }
+     );
+ 
+     const { userErrors } = response?.data?.data?.fulfillmentCreateV2 || {};
+ 
+     if (userErrors?.length > 0 || response?.data?.errors) {
+       return res.status(500).json({
+         status: 'failed',
+         message: userErrors?.[0]?.message || 'Fulfillment error occurred',
+         errors: userErrors
+       });
+     }
+ 
+     // ✅ Optional: Update internal order DB
+     const order = await Order.findOne({ order_id });
+ 
+     if (order) {
+       order.line_items = order.line_items?.map(item => {
+         if (item.fulfillment_item_id?.toString() === fulfillment_item_id?.toString()) {
+           return { ...item, fulfillment_status: 'Fulfilled' };
+         }
+         return item;
+       });
+ 
+       // Optional: Check if all items are now fulfilled
+       const allFulfilled = order.line_items.every(item => item.fulfillment_status === 'Fulfilled');
+       if (allFulfilled) {
+         order.fulfillment_status = 'Fulfilled';
+       }
+ 
+       const result = await order.save();
+ 
+       await OrderTimeline.create({
+         order_id: order.order_id,
+         action: 'Fulfilled',
+         message: `Line item ${title} fulfilled`
+       });
+
+       return res.status(201).json({
+         status: 'success',
+         message: 'Line item fulfilled successfully',
+         data: result 
+       });
+     }
+ 
+   } catch (error) {
+     console.error('Fulfill single item error:', error?.response?.data || error);
+     return res.status(500).json({
+       status: 'error',
+       message: 'Failed to fulfill line item',
+       error: error?.response?.data || error.message
+     });
+   }
+ });
+ 
+
 
 

@@ -85,7 +85,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
 
       if (newLineItem && !existsInDB) {
         const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-
+        
         order.line_items.push({
           id: item.id,
           name: newLineItem.name,
