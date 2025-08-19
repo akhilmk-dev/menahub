@@ -297,7 +297,7 @@ exports.fulfilOrder = catchAsync(async (req, res, next) => {
             }
          }
       );
-      if(response?.data.data?.fulfillmentCreateV2?.userErrors ||response?.data?.errors){
+      if(response?.data.data?.fulfillmentCreateV2?.userErrors?.length >0  ||response?.data?.errors){
          return res.status(500).json({status:"failed",message:'The requested quantity is not available'})
       }
 
