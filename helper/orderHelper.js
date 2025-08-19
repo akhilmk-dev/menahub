@@ -100,7 +100,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
           fulfillment_item_id: fulfillment_item_id?.toString() || null,
           fulfillment_status: newLineItem?.fulfillment_status || "",
           vendor_name: newLineItem.vendor,
-          vendor_id: "68942697132fc9edcecbc190"
+          vendor_id: newLineItem.vendorId
         });
       } else {
         const index = order.line_items.findIndex(
