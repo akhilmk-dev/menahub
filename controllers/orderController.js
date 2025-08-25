@@ -175,6 +175,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       cancel_reason: null,
       cancelled_at: null,
       created_at: order?.created_at || null,
+      deleted_at: order?.deleted_at || null,
       email: order?.email || "",
       name: order?.name || "",
       order_number: order?.order_number || "",
