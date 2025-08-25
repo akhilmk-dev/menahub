@@ -88,9 +88,9 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
-   const orderExists = await Order.findOne({ order_id: req.body.id ?? req.body.order_id });
+   const orderExists = await Order?.findOne({ order_id: req.body.id ?? req.body.order_id });
 
-   if(orderExists.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
+   if(orderExists?.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
 
    if (orderExists) {
       orderExists.financial_status = order?.financial_status;
