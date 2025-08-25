@@ -6,13 +6,21 @@ const axios = require('axios');
 const { NotFoundError } = require('../utils/customErrors');
 const RemovedLineItem = require('../models/RemovedLineItem');
 const OrderTimeline = require('../models/OrderTimeline');
+const User = require('../models/User');
 
 // get all orders
 exports.getOrders = catchAsync(async (req, res, next) => {
    const page = parseInt(req.query.page) || 0;
-   const limit = parseInt(req.query.limit) || 20;
+   const limit = parseInt(req.query.limit) || 10;
    const skip = page * limit;
-
+   const user = await User.findById(req.user?.id)?.populate('role');
+   const { search, financial_status ,vendor_id,sortBy} = req.query;
+  
+   if(user?.role?.role_name?.toLowerCase() == "vendor"){
+      const result = await getVendorOrders(req.user?.id, page, limit,search, financial_status,sortBy);
+      return res.status(200).json(result)
+   }
+  
    // Default sort
    let sort = { createdAt: -1 };
    if (req.query.sortBy) {
@@ -24,11 +32,11 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       });
    }
 
-   const { search, vendor_id, financial_status } = req.query;
+   let filter = {
+      deleted_at: { $in: [null, undefined] }
+   };
 
-   let filter = {};
-
-   // 🔍 Search filter
+   // search filter
    if (search) {
       const regex = new RegExp(search, 'i');
       filter.$or = [
@@ -38,7 +46,6 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       ];
    }
 
-   // 🏷️ Vendor filter (match orders where at least one line_item has this vendor_id)
    if (vendor_id) {
       filter['line_items'] = {
          $elemMatch: { vendor_id }
@@ -55,11 +62,11 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       .sort(sort)
       .skip(skip)
       .limit(limit)
-      .lean(); // use lean for performance if you're not modifying Mongoose doc methods
+      .lean(); 
 
    const total = await Order.countDocuments(filter);
 
-   // 🔁 Filter out unrelated line_items if vendor_id is used
+   //  Filter out unrelated line_items if vendor_id is used
    const filteredOrders = orders.map(order => {
       if (vendor_id) {
          order.line_items = order.line_items.filter(item => item.vendor_id === vendor_id);
@@ -67,7 +74,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       return order;
    });
 
-   // 📤 Send response
+   // Send response
    res.status(200).json({
       status: 'success',
       page,
@@ -78,11 +85,12 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    });
 });
 
-
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
    const orderExists = await Order.findOne({ order_id: req.body.id ?? req.body.order_id });
+
+   if(orderExists.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
 
    if (orderExists) {
       orderExists.financial_status = order?.financial_status;
@@ -106,7 +114,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
    const fulfillmentOrder = fulfillmentRes?.data?.fulfillment_orders?.[0];
 
-   // 🧠 Fetch product metafields for each line item
    const metafieldsPerProduct = {};
    await Promise.all(order.line_items.map(async item => {
       if (!item?.product_id) return;
@@ -196,7 +203,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 
    res.status(200).json({ message: "New order created" });
 });
-
 
 //get all orders by id
 exports.getOrderByVendor = catchAsync(async (req, res, next) => {
@@ -462,6 +468,24 @@ exports.fulfillSingleItem = catchAsync(async (req, res, next) => {
      });
    }
  });
+
+
+exports.deleteOrder = catchAsync(async(req,res,next)=>{
+   const id = req.body.id
+   const order = await Order.findOne({order_id:id});
+   if(!order)throw new NotFoundError("order not found");
+   order.deleted_at = new Date(); 
+   await order.save();
+
+   res.status(200).json({
+      status: "success",
+      message: "Order deleted successfully",
+      data: {
+         order_id: id,
+         deleted_at: order.deleted_at
+      }
+   });
+})
  
 
 

@@ -16,7 +16,7 @@ exports.login = catchAsync(async (req, res, next) => {
         path: 'permissions',
         select: 'permission_name page_url group _id' 
       }
-    });
+  });
 
   if (!user) throw new InternalServerError("Invalid credentials");
 
@@ -26,7 +26,7 @@ exports.login = catchAsync(async (req, res, next) => {
   const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
 
-  user.refreshToken = refreshToken;
+  user.refresh_token = refreshToken;
   await user.save();
 
   const permissions = user.role?.permissions || [];
@@ -36,6 +36,7 @@ exports.login = catchAsync(async (req, res, next) => {
     message:"Login Successfull!",
     accessToken,
     refreshToken,
+    user,
     permissions
   });
 });
@@ -47,12 +48,12 @@ exports.refreshToken = catchAsync(async (req, res, next) => {
   try {
     const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     const user = await User.findById(decoded.id);
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user || user.refresh_token !== refreshToken) {
       return res.status(403).json({ status: 'error', message: 'Forbidden' });
     }
     const newAccessToken = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
-    user.refreshToken = newRefreshToken;
+    user.refresh_token = newRefreshToken;
     await user.save();
     res.json({ status: 'success', accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {

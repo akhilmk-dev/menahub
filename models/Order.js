@@ -39,6 +39,7 @@ const orderSchema = new mongoose.Schema({
   subtotal_price: {type:Number,default:0},
   shipping_address:{type: String},
   customer: {type:String},
+  deleted_at:{type:String},
   shipping_address:{
     first_name: { type: String },
     last_name: { type: String },

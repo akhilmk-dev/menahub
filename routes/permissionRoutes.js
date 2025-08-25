@@ -6,10 +6,10 @@ const validateMiddleware = require('../utils/validate');
 const permissionSchema = require('../validations/permissionValidation');
 const { authenticate } = require('../middleware/authMiddleware');
 
-router.post('/',authenticate, validateMiddleware(permissionSchema), permissionController.createPermission);
-router.get('/',authenticate, permissionController.getPermissions);
-router.get('/:id',authenticate, permissionController.getPermissionById);
-router.put('/:id',authenticate, validateMiddleware(permissionSchema), permissionController.updatePermission);
-router.delete('/:id',authenticate, permissionController.deletePermission);
+router.post('/', validateMiddleware(permissionSchema), permissionController.createPermission);
+router.get('/', permissionController.getPermissions);
+router.get('/:id', permissionController.getPermissionById);
+router.put('/:id', validateMiddleware(permissionSchema), permissionController.updatePermission);
+router.delete('/:id', permissionController.deletePermission);
 
 module.exports = router;

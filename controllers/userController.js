@@ -152,7 +152,6 @@ exports.updateUser = catchAsync(async (req, res, next) => {
 });
 
 
-
 exports.deleteUser = catchAsync(async (req, res, next) => {
     const { id } = req.params;
     const isValidObjectId = mongoose.Types.ObjectId.isValid;

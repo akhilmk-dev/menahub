@@ -1,37 +1,71 @@
 import Order from "../models/Order.js";
 import axios from 'axios';
 import RemovedLineItem from "../models/RemovedLineItem.js";
-export const getVendorOrders = async (vendorId, page = 1, limit = 10) => {
-  const skip = (page - 1) * limit;
 
-  // Step 1: Get orders that include at least one line item for the vendor
-  const orders = await Order.find({ "line_items.vendor_id": vendorId })
-    .sort({ createdAt: -1 }) // Optional: latest first
-    .skip(skip)
-    .limit(limit)
-    .lean();
+export const getVendorOrders = async (vendorId, page = 0, limit = 10,search, financial_status,sortBy) => {
+  const skip = page * limit;
 
-  // Step 2: Filter out non-vendor line items in each order
-  const filteredOrders = orders.map(order => {
-    const vendorLineItems = order.line_items.filter(item =>
-      item.vendor_id?.toString() === vendorId.toString()
-    );
+  let sort = { createdAt: -1 };
+   if (sortBy) {
+      sort = {};
+      const sortParams = sortBy.split(',');
+      sortParams.forEach(param => {
+         const [field, order] = param.split(':');
+         sort[field] = order === 'asc' ? 1 : -1;
+      });
+   }
 
-    return {
-      ...order,
-      line_items: vendorLineItems
-    };
+ let filter = {
+  deleted_at: { $in: [null, undefined] }
+ };
+ 
+    // 🔍 Search filter
+    if (search) {
+       const regex = new RegExp(search, 'i');
+       filter.$or = [
+          { order_number: regex },
+          { 'customer.firstname': regex },
+          { 'customer.lastname': regex }
+       ];
+    }
+ 
+    // 🏷️ Vendor filter (match orders where at least one line_item has this vendor_id)
+    if (vendorId) {
+       filter['line_items'] = {
+          $elemMatch: { vendor_id :vendorId}
+       };
+    }
+ 
+    // 💳 Financial status filter
+    if (financial_status) {
+       filter.financial_status = financial_status;
+    }
+
+    // 🧾 Fetch matching orders
+    const orders = await Order.find(filter)
+       .sort(sort)
+       .skip(skip)
+       .limit(limit)
+       .lean(); // use lean for performance if you're not modifying Mongoose doc methods
+ 
+    const total = await Order.countDocuments(filter);
+    
+ 
+    // 🔁 Filter out unrelated line_items if vendor_id is used
+    const filteredOrders = orders.map(order => {
+       if (vendorId) {
+          order.line_items = order.line_items.filter(item => item.vendor_id == vendorId);
+       }
+       return order;
   });
 
-  // Step 3: Count total matching orders (not line items)
-  const totalOrders = await Order.countDocuments({ "line_items.vendor_id": vendorId });
-
   return {
-    totalOrders,
+    status: 'success',
+    total,
     page,
     limit,
-    totalPages: Math.ceil(totalOrders / limit),
-    orders: filteredOrders
+    totalPages: Math.ceil(total / limit),
+    data: filteredOrders
   };
 };
   
