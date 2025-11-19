@@ -88,7 +88,6 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
-   console.log("hello")
    const orderExists = await Order?.findOne({ order_id: req.body.id ?? req.body.order_id });
 
    if(orderExists?.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
@@ -147,7 +146,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       }
    }));
    
-   console.log(order.line_items,"line_items")
    // 🛠 Build final data
    const lineItems = order?.line_items?.map(item => {
       const meta = metafieldsPerProduct[item.product_id] || {};
@@ -169,7 +167,6 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          vendor_id: meta.vendor_id,
       };
    });
-   console.log(lineItems,"nemw lineItems")
 
    const newOrder = new Order({
       order_id: order?.id || "",
