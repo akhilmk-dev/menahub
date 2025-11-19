@@ -15,12 +15,12 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const skip = page * limit;
    const user = await User.findById(req.user?.id)?.populate('role');
    const { search, financial_status ,vendor_id,sortBy} = req.query;
-  
+
    if(user?.role?.role_name?.toLowerCase() == "vendor"){
       const result = await getVendorOrders(req.user?.id, page, limit,search, financial_status,sortBy);
       return res.status(200).json(result)
    }
-  
+
    // Default sort
    let sort = { createdAt: -1 };
    if (req.query.sortBy) {
@@ -52,12 +52,12 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       };
    }
 
-   // 💳 Financial status filter
+   // Financial status filter
    if (financial_status) {
       filter.financial_status = financial_status;
    }
 
-   // 🧾 Fetch matching orders
+   // Fetch matching orders
    const orders = await Order.find(filter)
       .sort(sort)
       .skip(skip)
@@ -161,7 +161,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          title: item?.title || null,
          quantity: item?.quantity || "",
          variant_id: item?.variant_id,
-         vendor_name: meta.vendor_name,
+         vendor_name: item.vendor,
          deleted_date: null,
          fulfillment_status: item?.fulfillment_status || "",
          fulfillment_item_id: fulfillmentLineItem?.id || "",
@@ -286,7 +286,6 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
       }
    });
 });
-
  
 exports.fulfilOrder = catchAsync(async (req, res, next) => {
    const lineItems = req.body?.line_items?.filter(item=> !item?.fulfillment_status)?.map(item => ({

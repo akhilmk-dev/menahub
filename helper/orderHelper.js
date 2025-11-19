@@ -119,26 +119,26 @@ export const handleOrderEdit = async (orderEditPayload) => {
     
       if (!newLineItem) continue;
     
-      // 📦 Get product metafields
+      //  Get product metafields
       let vendorId = null;
       let vendorName = newLineItem.vendor || null;
     
-      try {
-        const metafieldResp = await axios.get(
-          `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}/metafields.json`,
-          {
-            headers: {
-              'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
-            }
-          }
-        );
+      // try {
+      //   const metafieldResp = await axios.get(
+      //     `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}/metafields.json`,
+      //     {
+      //       headers: {
+      //         'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN
+      //       }
+      //     }
+      //   );
     
-        const metafields = metafieldResp?.data?.metafields || [];
-        vendorId = metafields.find(mf => mf.key === 'vendorid')?.value || null;
-        vendorName = metafields.find(mf => mf.key === 'vendor')?.value || vendorName;
-      } catch (err) {
-        console.warn(`Failed to fetch metafields for product ${newLineItem.product_id}`, err?.response?.data || err.message);
-      }
+      //   const metafields = metafieldResp?.data?.metafields || [];
+      //   vendorId = metafields.find(mf => mf.key === 'vendorid')?.value || null;
+      //   vendorName = metafields.find(mf => mf.key === 'vendor')?.value || vendorName;
+      // } catch (err) {
+      //   console.warn(`Failed to fetch metafields for product ${newLineItem.product_id}`, err?.response?.data || err.message);
+      // }
     
       const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
     
