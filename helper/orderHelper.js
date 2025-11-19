@@ -2,61 +2,61 @@ import Order from "../models/Order.js";
 import axios from 'axios';
 import RemovedLineItem from "../models/RemovedLineItem.js";
 
-export const getVendorOrders = async (vendorId, page = 0, limit = 10,search, financial_status,sortBy) => {
+export const getVendorOrders = async (vendorId, page = 0, limit = 10, search, financial_status, sortBy) => {
   const skip = page * limit;
 
   let sort = { createdAt: -1 };
-   if (sortBy) {
-      sort = {};
-      const sortParams = sortBy.split(',');
-      sortParams.forEach(param => {
-         const [field, order] = param.split(':');
-         sort[field] = order === 'asc' ? 1 : -1;
-      });
-   }
+  if (sortBy) {
+    sort = {};
+    const sortParams = sortBy.split(',');
+    sortParams.forEach(param => {
+      const [field, order] = param.split(':');
+      sort[field] = order === 'asc' ? 1 : -1;
+    });
+  }
 
- let filter = {
-  deleted_at: { $in: [null, undefined] }
- };
- 
-    // 🔍 Search filter
-    if (search) {
-       const regex = new RegExp(search, 'i');
-       filter.$or = [
-          { order_number: regex },
-          { 'customer.firstname': regex },
-          { 'customer.lastname': regex }
-       ];
-    }
- 
-    // 🏷️ Vendor filter (match orders where at least one line_item has this vendor_id)
+  let filter = {
+    deleted_at: { $in: [null, undefined] }
+  };
+
+  //  Search filter
+  if (search) {
+    const regex = new RegExp(search, 'i');
+    filter.$or = [
+      { order_number: regex },
+      { 'customer.firstname': regex },
+      { 'customer.lastname': regex }
+    ];
+  }
+
+  //  Vendor filter (match orders where at least one line_item has this vendor_id)
+  if (vendorId) {
+    filter['line_items'] = {
+      $elemMatch: { vendor_id: vendorId }
+    };
+  }
+
+  // Financial status filter
+  if (financial_status) {
+    filter.financial_status = financial_status;
+  }
+
+  // Fetch matching orders
+  const orders = await Order.find(filter)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .lean();
+
+  const total = await Order.countDocuments(filter);
+
+
+  //  Filter out unrelated line_items if vendor_id is used
+  const filteredOrders = orders.map(order => {
     if (vendorId) {
-       filter['line_items'] = {
-          $elemMatch: { vendor_id :vendorId}
-       };
+      order.line_items = order.line_items.filter(item => item.vendor_id == vendorId);
     }
- 
-    // 💳 Financial status filter
-    if (financial_status) {
-       filter.financial_status = financial_status;
-    }
-
-    // 🧾 Fetch matching orders
-    const orders = await Order.find(filter)
-       .sort(sort)
-       .skip(skip)
-       .limit(limit)
-       .lean(); // use lean for performance if you're not modifying Mongoose doc methods
- 
-    const total = await Order.countDocuments(filter);
-    
- 
-    // 🔁 Filter out unrelated line_items if vendor_id is used
-    const filteredOrders = orders.map(order => {
-       if (vendorId) {
-          order.line_items = order.line_items.filter(item => item.vendor_id == vendorId);
-       }
-       return order;
+    return order;
   });
 
   return {
@@ -68,7 +68,7 @@ export const getVendorOrders = async (vendorId, page = 0, limit = 10,search, fin
     data: filteredOrders
   };
 };
-  
+
 export const handleOrderEdit = async (orderEditPayload) => {
   try {
     const { order_id, line_items } = orderEditPayload;
@@ -113,16 +113,16 @@ export const handleOrderEdit = async (orderEditPayload) => {
     for (const item of line_items.additions) {
       const shopifyLineItemId = item.id;
       const delta = item.delta || 1;
-    
+
       const newLineItem = shopifyOrder.line_items.find(li => li.id == shopifyLineItemId);
       const existsInDB = order.line_items?.find(li => li.id == shopifyLineItemId);
-    
+
       if (!newLineItem) continue;
-    
+
       //  Get product metafields
       let vendorId = null;
       let vendorName = newLineItem.vendor || null;
-    
+
       // try {
       //   const metafieldResp = await axios.get(
       //     `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${newLineItem.product_id}/metafields.json`,
@@ -132,16 +132,16 @@ export const handleOrderEdit = async (orderEditPayload) => {
       //       }
       //     }
       //   );
-    
+
       //   const metafields = metafieldResp?.data?.metafields || [];
       //   vendorId = metafields.find(mf => mf.key === 'vendorid')?.value || null;
       //   vendorName = metafields.find(mf => mf.key === 'vendor')?.value || vendorName;
       // } catch (err) {
       //   console.warn(`Failed to fetch metafields for product ${newLineItem.product_id}`, err?.response?.data || err.message);
       // }
-    
+
       const fulfillment_item_id = fulfillmentMap[shopifyLineItemId];
-    
+
       if (!existsInDB) {
         // Add new line item
         order.line_items.push({
@@ -164,7 +164,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         const index = order.line_items.findIndex(
           li => li.id?.toString() === shopifyLineItemId?.toString()
         );
-    
+
         if (index !== -1) {
           order.line_items[index] = {
             ...order.line_items[index],
@@ -185,7 +185,7 @@ export const handleOrderEdit = async (orderEditPayload) => {
         }
       }
     }
-    
+
     // -------- Handle removals --------
     for (const item of line_items.removals) {
       const shopifyLineItemId = item.id;
@@ -280,4 +280,3 @@ export const handleOrderEdit = async (orderEditPayload) => {
   }
 };
 
- 

@@ -161,7 +161,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          title: item?.title || null,
          quantity: item?.quantity || "",
          variant_id: item?.variant_id,
-         vendor_name: item.vendor,
+         vendor_name: item?.vendor,
          deleted_date: null,
          fulfillment_status: item?.fulfillment_status || "",
          fulfillment_item_id: fulfillmentLineItem?.id || "",
