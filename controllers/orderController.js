@@ -146,7 +146,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       }
    }));
    
-
+   console.log(order.line_items,"line_items")
    // 🛠 Build final data
    const lineItems = order?.line_items?.map(item => {
       const meta = metafieldsPerProduct[item.product_id] || {};
@@ -168,6 +168,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
          vendor_id: meta.vendor_id,
       };
    });
+   console.log(lineItems,"nemw lineItems")
 
    const newOrder = new Order({
       order_id: order?.id || "",
