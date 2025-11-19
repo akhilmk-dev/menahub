@@ -8,6 +8,8 @@ const roleRoutes = require('./routes/roleRoutes');
 const userRoutes = require('./routes/userRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const orderRoutes = require('./routes/orderRoutes')
+const productRoutes = require('./routes/productRoutes');
+const collectionRoutes = require('./routes/collectionRoutes');
 
 const swaggerDocs = require('./docs/swagger');
 const cors = require('cors');
@@ -25,20 +27,19 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static('uploads'));
 app.use(morgan("dev"));
-
 app.use('/api/V1/auth', authRoutes);
 app.use('/api/V1/permissions', permissionRoutes);
 app.use('/api/V1/roles', roleRoutes);
 app.use('/api/V1/users', userRoutes);
 app.use('/api/V1/profile',profileRoutes);
 app.use('/api/V1/orders',orderRoutes)
+app.use("/api/V1/products", productRoutes);
+app.use('/api/V1/collections',collectionRoutes)
 
 // swagger documentation 
 swaggerDocs(app);
-
 // handle the error when none of the above routes works
 app.use(errorHandler);
-
 
 
 app.listen(process.env.PORT, () =>{

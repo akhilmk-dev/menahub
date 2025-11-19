@@ -104,7 +104,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
       return res.status(200).json({ status: "success", message: "order payment successful", data: data });
    }
 
-   // 🔁 Fetch fulfillment orders from Shopify
+   // Fetch fulfillment orders from Shopify
    const fulfillmentRes = await axios.get(`${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/orders/${order?.id}/fulfillment_orders.json`, {
       headers: {
          'X-Shopify-Access-Token': process.env.SHOPIFY_TOKEN,
@@ -255,16 +255,26 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
 
 exports.getOrderById = catchAsync(async (req, res, next) => {
    const orderId = req.params.id;
-   const order = await Order.findById(orderId).lean();
 
+   // Fetch the order by ID
+   const order = await Order.findById(orderId).lean();
    if (!order) {
       return next(new NotFoundError("Order not found"));
    }
 
+   // Fetch removed line items
    const removedItems = await RemovedLineItem.find({ order_id: order.order_id }).lean();
 
-   // Fetch the timeline entries for this order_id
+   // Fetch timeline for this order
    const timeline = await OrderTimeline.find({ order_id: order.order_id }).sort({ createdAt: -1 }).lean();
+
+   // Fetch user and check if vendor
+   const user = await User.findById(req.user?.id).populate('role');
+
+   // Filter line items if user is a vendor
+   if (user?.role?.role_name?.toLowerCase() === "vendor") {
+      order.line_items = order.line_items?.filter(item => item.vendor_id?.toString() === req.user.id);
+   }
 
    return res.status(200).json({
       status: "success",
@@ -272,10 +282,11 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
       data: {
          ...order,
          removed_line_items: removedItems,
-         timeline,            // <-- add timeline here
+         timeline,
       }
    });
 });
+
  
 exports.fulfilOrder = catchAsync(async (req, res, next) => {
    const lineItems = req.body?.line_items?.filter(item=> !item?.fulfillment_status)?.map(item => ({
@@ -470,7 +481,6 @@ exports.fulfillSingleItem = catchAsync(async (req, res, next) => {
    }
  });
 
-
 exports.deleteOrder = catchAsync(async(req,res,next)=>{
    const id = req.body.id
    const order = await Order.findOne({order_id:id});
@@ -488,6 +498,4 @@ exports.deleteOrder = catchAsync(async(req,res,next)=>{
    });
 })
  
-
-
 
