@@ -88,6 +88,7 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 //create order
 exports.createOrder = catchAsync(async (req, res, next) => {
    const order = req.body;
+   console.log("hello")
    const orderExists = await Order?.findOne({ order_id: req.body.id ?? req.body.order_id });
 
    if(orderExists?.deleted_at)return res.status(200).json({status:"success",message:"update successfull"});
@@ -217,6 +218,7 @@ exports.getOrderByVendor = catchAsync(async (req, res, next) => {
 
 //update order
 exports.updateOrder = catchAsync(async (req, res, next) => {
+   console.log("edit")
    const orderEditPayload = req.body?.order_edit;
    const response = await handleOrderEdit(orderEditPayload);
    await OrderTimeline.create({
