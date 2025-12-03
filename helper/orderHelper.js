@@ -2,7 +2,8 @@ import Order from "../models/Order.js";
 import axios from 'axios';
 import RemovedLineItem from "../models/RemovedLineItem.js";
 
-export const getVendorOrders = async (vendorId, page = 0, limit = 10, search, financial_status, sortBy) => {
+export const getVendorOrders = async (vendor_name, page = 0, limit = 10, search, financial_status, sortBy) => {
+ 
   const skip = page * limit;
 
   let sort = { createdAt: -1 };
@@ -29,10 +30,11 @@ export const getVendorOrders = async (vendorId, page = 0, limit = 10, search, fi
     ];
   }
 
-  //  Vendor filter (match orders where at least one line_item has this vendor_id)
-  if (vendorId) {
+  //  Vendor filter (match orders where at least one line_item has this vendor_name)
+  if (vendor_name) {
+    console.log("vendor is name exist")
     filter['line_items'] = {
-      $elemMatch: { vendor_id: vendorId }
+      $elemMatch: { vendor_name: vendor_name }
     };
   }
 
@@ -51,10 +53,10 @@ export const getVendorOrders = async (vendorId, page = 0, limit = 10, search, fi
   const total = await Order.countDocuments(filter);
 
 
-  //  Filter out unrelated line_items if vendor_id is used
+  //  Filter out unrelated line_items if vendor_name is used
   const filteredOrders = orders.map(order => {
-    if (vendorId) {
-      order.line_items = order.line_items.filter(item => item.vendor_id == vendorId);
+    if (vendor_name) {
+      order.line_items = order.line_items.filter(item => item.vendor_name == vendor_name);
     }
     return order;
   });

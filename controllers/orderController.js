@@ -14,10 +14,14 @@ exports.getOrders = catchAsync(async (req, res, next) => {
    const limit = parseInt(req.query.limit) || 10;
    const skip = page * limit;
    const user = await User.findById(req.user?.id)?.populate('role');
-   const { search, financial_status ,vendor_id,sortBy} = req.query;
+   console.log("req.query:",req.query)
+   const { search, financial_status,sortBy,vendor_name} = req.query;
+   console.log("vendor_name:",vendor_name)
 
    if(user?.role?.role_name?.toLowerCase() == "vendor"){
-      const result = await getVendorOrders(req.user?.id, page, limit,search, financial_status,sortBy);
+      const vendorName = user.name;
+      const result = await getVendorOrders(vendorName, page, limit,search, financial_status,sortBy);
+      console.log("result:",result)
       return res.status(200).json(result)
    }
 
@@ -46,9 +50,9 @@ exports.getOrders = catchAsync(async (req, res, next) => {
       ];
    }
 
-   if (vendor_id) {
+   if (vendor_name) {
       filter['line_items'] = {
-         $elemMatch: { vendor_id }
+         $elemMatch: { vendor_name}
       };
    }
 
@@ -68,11 +72,13 @@ exports.getOrders = catchAsync(async (req, res, next) => {
 
    //  Filter out unrelated line_items if vendor_id is used
    const filteredOrders = orders.map(order => {
-      if (vendor_id) {
-         order.line_items = order.line_items.filter(item => item.vendor_id === vendor_id);
+      if (vendor_name) {
+         order.line_items = order.line_items.filter(item => item.vendor_name === vendor_name);
+         console.log("orderlineitems:",order.line_items)
       }
       return order;
    });
+   console.log("filteredOrders:",filteredOrders)
 
    // Send response
    res.status(200).json({
@@ -207,6 +213,7 @@ exports.createOrder = catchAsync(async (req, res, next) => {
 //get all orders by id
 exports.getOrderByVendor = catchAsync(async (req, res, next) => {
    const vendorId = req.params.id
+   console.log("vendorId:",vendorId)
    const page = parseInt(req.query.page) || 1;
    const limit = parseInt(req.query.limit) || 10;
    const result = await getVendorOrders(vendorId, page, limit);
@@ -255,7 +262,7 @@ exports.cancelOrder = catchAsync(async (req, res, next) => {
 
 exports.getOrderById = catchAsync(async (req, res, next) => {
    const orderId = req.params.id;
-
+  
    // Fetch the order by ID
    const order = await Order.findById(orderId).lean();
    if (!order) {
@@ -270,10 +277,13 @@ exports.getOrderById = catchAsync(async (req, res, next) => {
 
    // Fetch user and check if vendor
    const user = await User.findById(req.user?.id).populate('role');
+ 
 
    // Filter line items if user is a vendor
    if (user?.role?.role_name?.toLowerCase() === "vendor") {
+
       order.line_items = order.line_items?.filter(item => item.vendor_id?.toString() === req.user.id);
+    
    }
 
    return res.status(200).json({
