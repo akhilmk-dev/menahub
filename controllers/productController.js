@@ -377,7 +377,29 @@ export const updateProduct = async (req, res) => {
   }
 };
 
+export const shopifyProductDeleteWebhook = async (req, res) => {
+  try {
+    const data = req.body; 
+    const shopifyProductId = data.id;  
 
+    if (!shopifyProductId) {
+      return res.status(400).json({ message: "Shopify product ID missing" });
+    }
+
+    // Delete from MongoDB
+    const deleted = await Product.findOneAndDelete({ shopifyId: shopifyProductId });
+
+    // console.log(" Shopify Deleted Product:", shopifyProductId);
+    // console.log("Mongo Deleted:", deleted);
+
+    // Important: Respond with 200 so Shopify knows webhook succeeded
+    return res.status(200).json({ success: true, message: "Product deleted locally" });
+
+  } catch (error) {
+    console.error("SHOPIFY DELETE WEBHOOK ERROR:", error);
+    return res.status(500).json({ message: "Error processing webhook" });
+  }
+};
 
 
 
