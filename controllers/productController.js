@@ -4,7 +4,7 @@ import catchAsync from "../utils/catchAsync.js";
 
 export const createProduct = async (req, res) => {
   try {
-    const { product, collectionIds } = req.body;  
+    const { product, collectionIds } = req.body;
 
     // Remove metafields (Shopify won't accept inside product payload)
     const cleanProduct = { ...product };
@@ -40,7 +40,7 @@ export const createProduct = async (req, res) => {
     );
 
     const shopifyProduct = productResponse.data.product;
-    console.log(shopifyProduct,"show.....")
+    console.log(shopifyProduct, "show.....")
     const productId = shopifyProduct.id;
     const variants = shopifyProduct.variants;
 
@@ -98,69 +98,251 @@ export const createProduct = async (req, res) => {
   }
 };
 
+// export const getProducts = catchAsync(async (req, res, next) => {
+//   const page = parseInt(req.query.page) || 0;
+//   const limit = parseInt(req.query.limit) || 10;
+//   const skip = page * limit;
+
+//   const { search, vendor_name , sortBy } = req.query;
+
+//   // Default sort (latest products first)
+//   let sort = { createdAt: -1 };
+
+//   // Sorting by user input (e.g., price, title, etc.)
+//   if (sortBy) {
+//      sort = {};
+//      const sortParams = sortBy.split(',');
+//      sortParams.forEach(param => {
+//         const [field, order] = param.split(':');
+//         sort[field] = order === 'asc' ? 1 : -1;
+//      });
+//   }
+
+//   // Filter criteria
+//   let filter = {
+//      deleted_at: { $in: [null, undefined] }
+//   };
+
+//   // Search filter (matches product title, description, or SKU)
+//   if (search) {
+//      const regex = new RegExp(search, 'i');
+//      filter.$or = [
+//         { title: regex },
+//         { body_html: regex },
+//         { sku: regex }
+//      ];
+//   }
+
+//   // Filter by vendor_name (if provided)
+//   if (vendor_name) {
+//      filter.vendor_name = vendor_name;
+//   }
+
+//   // Fetch matching products from the database
+//   const products = await Product.find(filter)
+//      .sort(sort)
+//      .skip(skip)
+//      .limit(limit)
+//      .lean(); 
+
+//   // Get total count of matching products
+//   const total = await Product.countDocuments(filter);
+
+//   // Send paginated response with product data
+//   res.status(200).json({
+//      status: 'success',
+//      page,
+//      limit,
+//      total,
+//      totalPages: Math.ceil(total / limit),
+//      data: products,
+//   });
+// });
+
 export const getProducts = catchAsync(async (req, res, next) => {
-  const page = parseInt(req.query.page) || 0;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = page * limit;
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const pageInfo = req.query.page_info || null;
+    const { search, vendor_name } = req.query;
 
-  const { search, vendor_name , sortBy } = req.query;
+    // Build GraphQL query string
+    let queryString = "";
+    if (search) queryString += `title:*${search}*`;
+    if (vendor_name) queryString += queryString ? ` AND vendor:"${vendor_name}"` : `vendor:"${vendor_name}"`;
 
-  // Default sort (latest products first)
-  let sort = { createdAt: -1 };
-
-  // Sorting by user input (e.g., price, title, etc.)
-  if (sortBy) {
-     sort = {};
-     const sortParams = sortBy.split(',');
-     sortParams.forEach(param => {
-        const [field, order] = param.split(':');
-        sort[field] = order === 'asc' ? 1 : -1;
-     });
+    const graphQLQuery = {
+      query: `
+     query GetProducts($first: Int!, $after: String, $query: String) {
+  products(first: $first, after: $after, query: $query) {
+    edges {
+      node {
+        id
+        legacyResourceId
+        title
+        handle
+        vendor
+        productType
+        tags
+        status
+        descriptionHtml
+        createdAt
+        updatedAt
+        options {
+          id
+          name
+          values
+        }
+        images(first: 20) {
+          edges {
+            node {
+              id
+              src
+              altText
+              width
+              height
+            }
+          }
+        }
+        variants(first: 50) {
+          edges {
+            node {
+              id
+              title
+              sku
+              price
+              compareAtPrice
+              inventoryQuantity
+              availableForSale
+              selectedOptions {
+                name
+                value
+              }
+              barcode
+              image {
+                id
+                src
+                altText
+              }
+              unitPrice {
+                amount
+                currencyCode
+              }
+              unitPriceMeasurement {
+                measuredType
+                quantityUnit
+              }
+            }
+          }
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
   }
+}
+    `,
+      variables: {
+        first: limit,
+        after: pageInfo,
+        query: queryString || null,
+      },
+    };
 
-  // Filter criteria
-  let filter = {
-     deleted_at: { $in: [null, undefined] }
-  };
+    const response = await axios.post(
+      `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/graphql.json`,
+      graphQLQuery,
+      {
+        headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+      }
+    );
 
-  // Search filter (matches product title, description, or SKU)
-  if (search) {
-     const regex = new RegExp(search, 'i');
-     filter.$or = [
-        { title: regex },
-        { body_html: regex },
-        { sku: regex }
-     ];
+    const productsData = response.data.data.products;
+    const edges = productsData.edges || [];
+
+    const products = edges.map(e => {
+      const product = e.node;
+
+      // Format the product response
+      const formattedProduct = {
+        id: product.id,
+        legacyResourceId: product.legacyResourceId,
+        title: product.title,
+        handle: product.handle,
+        vendor: product.vendor,
+        productType: product.productType,
+        tags: product.tags,
+        status: product.status,
+        descriptionHtml: product.descriptionHtml,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+        options: product.options.map(option => ({
+          name: option.name,
+          values: option.values,
+        })),
+        images: product.images.edges.map(image => ({
+          src: image.node.src,
+          altText: image.node.altText,
+          width: image.node.width,
+          height: image.node.height,
+        })),
+        variants: product.variants.edges.map(variant => ({
+          id: variant.node.id,
+          title: variant.node.title,
+          sku: variant.node.sku,
+          price: variant.node.price,
+          compareAtPrice: variant.node.compareAtPrice,
+          inventoryQuantity: variant.node.inventoryQuantity,
+          availableForSale: variant.node.availableForSale,
+          selectedOptions: variant.node.selectedOptions,
+          barcode: variant.node.barcode,
+          image: variant.node.image ? {
+            src: variant.node.image.src,
+            altText: variant.node.image.altText
+          } : null,
+          unitPrice: variant.node.unitPrice ? {
+            amount: variant.node.unitPrice.amount,
+            currencyCode: variant.node.unitPrice.currencyCode
+          } : null,
+          unitPriceMeasurement: variant.node.unitPriceMeasurement
+            ? {
+              measuredType: variant.node.unitPriceMeasurement.measuredType,
+              quantityUnit: variant.node.unitPriceMeasurement.quantityUnit
+            }
+            : null
+        }))
+      };
+
+      return formattedProduct;
+    });
+
+    const totalCountResponse = await axios.get(
+      `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/count.json`,
+      {
+        headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+      }
+    );
+
+    const totalProductCount = totalCountResponse.data.count;
+
+    const nextPageInfo = productsData.pageInfo.hasNextPage ? productsData.pageInfo.endCursor : null;
+
+    res.status(200).json({
+      status: "success",
+      limit,
+      total: products.length,
+      totalPages: totalProductCount,
+      nextPageInfo,
+      data: products,
+    });
+  } catch (error) {
+    next()
   }
-
-  // Filter by vendor_name (if provided)
-  if (vendor_name) {
-     filter.vendor_name = vendor_name;
-  }
-
-  // Fetch matching products from the database
-  const products = await Product.find(filter)
-     .sort(sort)
-     .skip(skip)
-     .limit(limit)
-     .lean(); 
-
-  // Get total count of matching products
-  const total = await Product.countDocuments(filter);
-
-  // Send paginated response with product data
-  res.status(200).json({
-     status: 'success',
-     page,
-     limit,
-     total,
-     totalPages: Math.ceil(total / limit),
-     data: products,
-  });
 });
 
 export const deleteProduct = async (req, res) => {
-  const { productId } = req.params; 
+  const { productId } = req.params;
 
   if (!productId) {
     return res.status(500).json({ message: "Product ID is required" });
@@ -192,10 +374,10 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-export const getProductById = async(req,res)=>{
-  const {productId} = req.params
-  if(!productId){
-     return res.status(500).json({message:"productId is required"})
+export const getProductById = async (req, res) => {
+  const { productId } = req.params
+  if (!productId) {
+    return res.status(500).json({ message: "productId is required" })
   }
   try {
     const apiUrl = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${productId}.json`;
@@ -205,8 +387,8 @@ export const getProductById = async(req,res)=>{
         "Content-Type": "application/json",
       },
     });
-    const {collectionIds} = await Product.findOne({shopifyId:productId})
-    return res.status(200).json({message:"Product details fetched successfully",data:{data:response.data.product,collectionIds:collectionIds}})
+    const data = await Product.findOne({ shopifyId: productId })
+    return res.status(200).json({ message: "Product details fetched successfully", data: { data: response.data.product, collectionIds: data?.collectionIds || [] } })
   } catch (error) {
     console.log(error)
   }
@@ -273,7 +455,7 @@ export const updateProduct = async (req, res) => {
 
     for (const variant of updatedShopifyProduct.variants) {
       const match = cleanProduct.variants?.find(
-        (v) => v.sku === variant.sku || v.option1 === variant.option1
+        (v) => v.sku === variant.sku || v.id === variant.id
       );
 
       const qtyToSet = match?.inventory_quantity ?? 0;
@@ -379,8 +561,8 @@ export const updateProduct = async (req, res) => {
 
 export const shopifyProductDeleteWebhook = async (req, res) => {
   try {
-    const data = req.body; 
-    const shopifyProductId = data.id;  
+    const data = req.body;
+    const shopifyProductId = data.id;
 
     if (!shopifyProductId) {
       return res.status(400).json({ message: "Shopify product ID missing" });
@@ -401,6 +583,191 @@ export const shopifyProductDeleteWebhook = async (req, res) => {
   }
 };
 
+export const updateVariantQuantity = catchAsync(async (req, res, next) => {
+  const { productId, variantId } = req.params;
+  const { quantity } = req.body;
+
+  if (!variantId || !productId || quantity === undefined) {
+    return res.status(400).json({ message: "productId, variantId and quantity are required" });
+  }
+
+  try {
+    // 1. Get variant to fetch inventory_item_id
+    const variantURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/variants/${variantId}.json`;
+
+    const variantRes = await axios.get(variantURL, {
+      headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+    });
+
+    const inventoryItemId = variantRes.data?.variant?.inventory_item_id;
+
+    // 2. Get location id
+    const locURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/locations.json`;
+    const locRes = await axios.get(locURL, {
+      headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+    });
+
+    const locationId = locRes.data.locations[0].id;
+
+    // 3. Update inventory level
+    const invURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/inventory_levels/set.json`;
+
+    const updateRes = await axios.post(
+      invURL,
+      {
+        location_id: locationId,
+        inventory_item_id: inventoryItemId,
+        available: Number(quantity),
+      },
+      {
+        headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+      }
+    );
+
+    res.status(200).json({
+      message: "Variant quantity updated successfully",
+      data: updateRes.data,
+    });
+  } catch (error) {
+    console.error("Variant quantity update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      message: "Failed to update variant quantity",
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+export const updateVariantPrice = catchAsync(async (req, res, next) => {
+  const { productId, variantId } = req.params;
+  const { price } = req.body;
+
+  if (!variantId || !productId || price === undefined) {
+    return res.status(400).json({ message: "productId, variantId and price are required" });
+  }
+
+  try {
+    const url = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/variants/${variantId}.json`;
+
+    const response = await axios.put(
+      url,
+      { variant: { id: variantId, price: Number(price) } },
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.status(200).json({
+      message: "Variant price updated successfully",
+      data: response.data,
+    });
+  } catch (error) {
+    console.error("Variant price update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      message: "Failed to update variant price",
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+export const updateProductPrice = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+  const { price } = req.body;
+
+  if (!productId || price === undefined) {
+    return res.status(400).json({ message: "productId and price are required" });
+  }
+
+  try {
+    // Simple product means only 1 variant
+    const url = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${productId}.json`;
+
+    const response = await axios.put(
+      url,
+      {
+        product: {
+          id: productId,
+          variants: [{ price: Number(price) }],
+        },
+      },
+      {
+        headers: {
+          "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.status(200).json({
+      message: "Product price updated successfully",
+      data: response.data,
+    });
+  } catch (error) {
+    console.error("Product price update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      message: "Failed to update product price",
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
+export const updateProductQuantity = catchAsync(async (req, res, next) => {
+  const { productId } = req.params;
+  const { quantity } = req.body;
+
+  if (!productId || quantity === undefined) {
+    return res.status(400).json({ message: "productId and quantity are required" });
+  }
+
+  try {
+    // step 1: get product → get first variant id
+    const productURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/products/${productId}.json`;
+
+    const productRes = await axios.get(productURL, {
+      headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+    });
+
+    const variant = productRes.data.product.variants[0];
+    const variantId = variant.id;
+    const inventoryItemId = variant.inventory_item_id;
+
+    // step 2: get location id
+    const locURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/locations.json`;
+    const locRes = await axios.get(locURL, {
+      headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+    });
+
+    const locationId = locRes.data.locations[0].id;
+
+    // step 3: update inventory
+    const invURL = `${process.env.SHOPIFY_BASE_URL}/admin/api/2025-07/inventory_levels/set.json`;
+
+    const updateRes = await axios.post(
+      invURL,
+      {
+        location_id: locationId,
+        inventory_item_id: inventoryItemId,
+        available: Number(quantity),
+      },
+      {
+        headers: { "X-Shopify-Access-Token": process.env.SHOPIFY_TOKEN },
+      }
+    );
+
+    res.status(200).json({
+      message: "Product quantity updated successfully",
+      data: updateRes.data,
+    });
+  } catch (error) {
+    console.error("Product qty update error:", error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      message: "Failed to update product quantity",
+      details: error.response?.data || error.message,
+    });
+  }
+});
 
 
 // // STEP 2 — Get shop locations

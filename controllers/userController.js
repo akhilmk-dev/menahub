@@ -151,7 +151,6 @@ exports.updateUser = catchAsync(async (req, res, next) => {
     res.status(200).json({ status: 'success', message: 'User updated successfully', data: result });
 });
 
-
 exports.deleteUser = catchAsync(async (req, res, next) => {
     const { id } = req.params;
     const isValidObjectId = mongoose.Types.ObjectId.isValid;
